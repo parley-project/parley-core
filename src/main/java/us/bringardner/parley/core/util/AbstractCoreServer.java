@@ -58,6 +58,16 @@ public abstract class AbstractCoreServer extends BaseThread  {
 
 	public static final int DEFAULT_SOCKET_TIMEOUT = 60000;
 
+	/** Milliseconds before answering a failed login, which slows down password guessing */
+	public static final String PROPERTY_LOGIN_FAILURE_DELAY = "LoginFailureDelay";
+	public static final int DEFAULT_LOGIN_FAILURE_DELAY = 1000;
+	/** Failed logins before the connection is closed */
+	public static final String PROPERTY_MAX_LOGIN_ATTEMPTS = "MaxLoginAttempts";
+	public static final int DEFAULT_MAX_LOGIN_ATTEMPTS = 3;
+	/** Milliseconds a connection may take to log in before it is closed, 0 for no limit */
+	public static final String PROPERTY_LOGIN_TIME_LIMIT = "LoginTimeLimit";
+	public static final int DEFAULT_LOGIN_TIME_LIMIT = 0;
+
 	public static final String PROPERTY_BACKLOG = "Backlog";
 
 	public static final int DEFAULT_BACKLOG = 0;
@@ -101,6 +111,12 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	private volatile int lingerTime=-1;
 
 	private volatile int socketTimeout=-1;
+
+	private volatile int loginFailureDelay=-1;
+
+	private volatile int maxLoginAttempts=-1;
+
+	private volatile int loginTimeLimit=-1;
 
 	private volatile int backlog = -1;
 
@@ -626,6 +642,117 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		}
 		
 		return socketTimeout;
+	}
+
+	// ------------------------------------------------------------------ login limits
+	// The same for every protocol; each server applies them to its own login commands.
+
+	/**
+	 * @return milliseconds to wait before answering a failed login (0 = none), from the
+	 * {@value #PROPERTY_LOGIN_FAILURE_DELAY} property, else {@link #getDefaultLoginFailureDelay()}
+	 */
+	public int getLoginFailureDelay() {
+		if( loginFailureDelay < 0 ) {
+			synchronized(this) {
+				if( loginFailureDelay < 0 ) {
+					loginFailureDelay = Math.max(0, getIntProperty(PROPERTY_LOGIN_FAILURE_DELAY, getDefaultLoginFailureDelay()));
+				}
+			}
+		}
+		return loginFailureDelay;
+	}
+
+	/**
+	 * @param milliSeconds delay before answering a failed login (0 = none)
+	 * @throws IllegalArgumentException if negative
+	 */
+	public void setLoginFailureDelay(int milliSeconds) {
+		if( milliSeconds < 0 ) {
+			throw new IllegalArgumentException("loginFailureDelay must be >= 0");
+		}
+		loginFailureDelay = milliSeconds;
+	}
+
+	/**
+	 * @return {@value #DEFAULT_LOGIN_FAILURE_DELAY}; a server whose clients fail logins as part
+	 * of normal use (SSH clients trying each of their keys) uses less
+	 */
+	protected int getDefaultLoginFailureDelay() {
+		return DEFAULT_LOGIN_FAILURE_DELAY;
+	}
+
+	/**
+	 * @return failed logins before the connection is closed, from the
+	 * {@value #PROPERTY_MAX_LOGIN_ATTEMPTS} property, else {@link #getDefaultMaxLoginAttempts()}
+	 */
+	public int getMaxLoginAttempts() {
+		if( maxLoginAttempts < 0 ) {
+			synchronized(this) {
+				if( maxLoginAttempts < 0 ) {
+					maxLoginAttempts = Math.max(1, getIntProperty(PROPERTY_MAX_LOGIN_ATTEMPTS, getDefaultMaxLoginAttempts()));
+				}
+			}
+		}
+		return maxLoginAttempts;
+	}
+
+	/**
+	 * @param attempts failed logins before the connection is closed
+	 * @throws IllegalArgumentException if less than 1
+	 */
+	public void setMaxLoginAttempts(int attempts) {
+		if( attempts < 1 ) {
+			throw new IllegalArgumentException("maxLoginAttempts must be >= 1");
+		}
+		maxLoginAttempts = attempts;
+	}
+
+	/**
+	 * @return {@value #DEFAULT_MAX_LOGIN_ATTEMPTS}
+	 */
+	protected int getDefaultMaxLoginAttempts() {
+		return DEFAULT_MAX_LOGIN_ATTEMPTS;
+	}
+
+	/**
+	 * @param failures failed logins on a connection so far
+	 * @return true if the connection should be closed
+	 */
+	public boolean isTooManyLoginFailures(int failures) {
+		return failures >= getMaxLoginAttempts();
+	}
+
+	/**
+	 * @return milliseconds a connection may take to log in (0 = no limit), from the
+	 * {@value #PROPERTY_LOGIN_TIME_LIMIT} property, else {@link #getDefaultLoginTimeLimit()}
+	 */
+	public int getLoginTimeLimit() {
+		if( loginTimeLimit < 0 ) {
+			synchronized(this) {
+				if( loginTimeLimit < 0 ) {
+					loginTimeLimit = Math.max(0, getIntProperty(PROPERTY_LOGIN_TIME_LIMIT, getDefaultLoginTimeLimit()));
+				}
+			}
+		}
+		return loginTimeLimit;
+	}
+
+	/**
+	 * @param milliSeconds time a connection may take to log in (0 = no limit)
+	 * @throws IllegalArgumentException if negative
+	 */
+	public void setLoginTimeLimit(int milliSeconds) {
+		if( milliSeconds < 0 ) {
+			throw new IllegalArgumentException("loginTimeLimit must be >= 0");
+		}
+		loginTimeLimit = milliSeconds;
+	}
+
+	/**
+	 * @return {@value #DEFAULT_LOGIN_TIME_LIMIT} (no limit)
+	 */
+	protected int getDefaultLoginTimeLimit() {
+		return DEFAULT_LOGIN_TIME_LIMIT;
 	}
 
 	/**
