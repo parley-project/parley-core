@@ -1,7 +1,7 @@
-# BjlCore
+# parley-core
 
-The core of the **Bringardner Java Library (BJL)**: small, dependency-free building blocks that
-the other BJL projects share. It gives you property lookup and logging for any class, threads
+The core of **Parley**, a family of Java libraries for implementing internet protocols: small,
+dependency-free building blocks that the other Parley projects share. It gives you property lookup and logging for any class, threads
 that can be stopped cleanly, a TCP/SSL server and client base, a few utilities, and a set of
 Swing date and time pickers.
 
@@ -24,21 +24,26 @@ Swing date and time pickers.
 
 ## Getting started
 
-BjlCore is published to GitHub Packages:
+parley-core is published to GitHub Packages (and, once released there, Maven Central):
 
 ```xml
 <dependency>
-    <groupId>us.bringardner</groupId>
-    <artifactId>bjl_core</artifactId>
-    <version>1.2.0</version>
+    <groupId>us.bringardner.parley</groupId>
+    <artifactId>parley-core</artifactId>
+    <version>1.0.0</version>
 </dependency>
 ```
+
+> parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
+> `us.bringardner.core`. Moving over means changing the dependency and replacing
+> `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
+> such as `us.bringardner.parley.core.BjlLogger.LogLevel`.
 
 ```xml
 <repositories>
     <repository>
         <id>github</id>
-        <url>https://maven.pkg.github.com/tony-bringardner/BjlCore</url>
+        <url>https://maven.pkg.github.com/tony-bringardner/parley-core</url>
     </repository>
 </repositories>
 ```
@@ -64,18 +69,18 @@ public class Mailer extends BaseObject {
 
 | Package | Class | Purpose |
 |---|---|---|
-| `us.bringardner.core` | `BaseObject` | Property lookup and logging for any class. |
+| `us.bringardner.parley.core` | `BaseObject` | Property lookup and logging for any class. |
 | | `SecureBaseObject` | Adds key store, trust manager and `SSLContext` handling. |
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
-| | `ILogger` | The logging interface used everywhere in BJL. |
+| | `ILogger` | The logging interface used everywhere in Parley. |
 | | `BjlLogger`, `Log4JLogger`, `JulLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`. |
-| `us.bringardner.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
+| `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
 | | `LruMap` | A `LinkedHashMap` that drops the least recently used entry at a size limit. |
 | | `SearchableClassLoader` | Finds the direct (or all) sub classes / implementations of a type in jars and folders. Only the matching classes are loaded. |
 | | `ThreadSafeDateFormat` | A synchronized `SimpleDateFormat`. Deprecated: use `java.time.format.DateTimeFormatter`. |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
-| `us.bringardner.core.swing` | `DatePanel`, `DayPanel`, `TimePanel`, `Clock` | Date and time picker panels. |
+| `us.bringardner.parley.core.swing` | `DatePanel`, `DayPanel`, `TimePanel`, `Clock` | Date and time picker panels. |
 | | `DateDialog`, `TimeDialog`, `DateAndTimeDialog` | Modal dialogs built from the panels. |
 | | `DateTimeCombo` | A date/time spinner with a button that opens `DateAndTimeDialog`. |
 
@@ -122,7 +127,7 @@ logger. `BaseObject.findLogger(name)` returns the logger for any name, and
 
 The built-in logger writes `MM-dd-yyyy HH:mm:ss.SSS [thread] LEVEL name - message` lines.
 It is configured with properties (see [Properties](#properties); the class name prefix is
-`us.bringardner.core.BjlLogger`):
+`us.bringardner.parley.core.BjlLogger`):
 
 | Property | Meaning |
 |---|---|
@@ -145,7 +150,7 @@ Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`, `WARNING`
 
 ### log4j 2 and java.util.logging
 
-`Log4JLogger` calls log4j through reflection, so BjlCore does not depend on it. Add
+`Log4JLogger` calls log4j through reflection, so parley-core does not depend on it. Add
 `log4j-api` and `log4j-core` to your own project and configure log4j as usual
 (`resources/log4j2.xml` is a working example). Setting a level from code needs `log4j-core`.
 

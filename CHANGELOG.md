@@ -1,5 +1,19 @@
 # Changelog
 
+## parley-core 1.0.0 (unreleased)
+
+BjlCore is now **parley-core**, part of the Parley library family. The code is the same as
+BjlCore 1.3.1 (below); only names changed.
+
+### Changed (needs a code change)
+
+- Maven coordinates: `us.bringardner:bjl_core` is now `us.bringardner.parley:parley-core`.
+- Packages: `us.bringardner.core` (and `.swing`, `.util`) is now `us.bringardner.parley.core`.
+- Module name (`Automatic-Module-Name`): `us.bringardner.core` is now `us.bringardner.parley.core`.
+- Property names that start with a class name change with the package, for example
+  `us.bringardner.core.BjlLogger.LogLevel` is now `us.bringardner.parley.core.BjlLogger.LogLevel`
+  and `us.bringardner.core.virtualThreads` is now `us.bringardner.parley.core.virtualThreads`.
+
 ## 1.3.1 (unreleased)
 
 ### Fixed
