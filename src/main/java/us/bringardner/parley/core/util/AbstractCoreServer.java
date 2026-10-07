@@ -1,0 +1,658 @@
+// ~version~V000.01.02-V000.00.01-V000.00.00-
+package us.bringardner.parley.core.util;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocket;
+
+import us.bringardner.parley.core.BaseThread;
+
+
+/**
+ * <PRE>
+ * This class is a general purpose TCP/IP Server.
+ * It implements all of the functionality required to accepts connection 
+ * requests for both secure and insecure channels and establishes a 
+ * framework for managing sessions.
+ * 
+ * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>
+ * 
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       <A href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</A>
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ *  </PRE>
+ *  
+ *  @author Tony Bringardner   
+ *
+ */
+public abstract class AbstractCoreServer extends BaseThread  {
+
+	
+	public static final int DEFAULT_PORT = 9200;
+
+	public static final String PROPERTY_PORT = "Port";
+
+	public static final String PROPERTY_ACCEPT_TIMEOUT = "AcceptTimeout";
+
+	public static final int DEFAULT_ACCEPT_TIMEOUT = 60000;
+
+	public static final String PROPERTY_SOCKET_TIMEOUT = "SocketTimeout";
+
+	public static final int DEFAULT_SOCKET_TIMEOUT = 60000;
+
+	public static final String PROPERTY_BACKLOG = "Backlog";
+
+	public static final int DEFAULT_BACKLOG = 0;
+
+	public static final String PROPERTY_SO_LINGER = "SoLinger";
+
+	/**
+	 * SO_LINGER is in SECONDS (see Socket.setSoLinger).
+	 * This was 60000 (almost 17 hours) which could block Socket.close() for a very long time.
+	 */
+	public static final int DEFAULT_SO_LINGER = 10;
+
+	public static final String PROPERTY_IS_SO_LINGER = "IsSoLinger";
+
+	public static final String PROPERTY_BIND_ADDRESS = "BindAddress";
+
+	/** "true" turns on SO_KEEPALIVE for accepted sockets, so a peer that disappears is detected. Default false. */
+	public static final String PROPERTY_KEEP_ALIVE = "KeepAlive";
+
+	/** "true" turns on TCP_NODELAY (no Nagle delay) for accepted sockets. Default false. */
+	public static final String PROPERTY_TCP_NO_DELAY = "TcpNoDelay";
+
+	/** The most connections {@link #tryAcquireConnection()} allows at once, see {@link #DEFAULT_MAX_CONNECTIONS}. */
+	public static final String PROPERTY_MAX_CONNECTIONS = "MaxConnections";
+
+	/** 0: no limit. */
+	public static final int DEFAULT_MAX_CONNECTIONS = 0;
+
+	private volatile ServerSocketFactory factory;
+	
+	
+	private volatile int port=-1;
+
+	//  Attributes may be accessed by many connection threads at the same time.
+	private volatile Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
+
+	private volatile boolean needClientAuth=false;
+
+	private volatile int acceptTimeout=-1;
+
+	private volatile int lingerTime=-1;
+
+	private volatile int socketTimeout=-1;
+
+	private volatile int backlog = -1;
+
+	private volatile InetAddress bindAddr;
+	//  The bind address may legitimately be null so we need a separate flag to know if the property has been read.
+	private volatile boolean bindAddrConfigured = false;
+
+	//  null means the IsSoLinger property has not been read yet
+	private volatile Boolean isSoLinger;
+
+	//  null means the property has not been read yet
+	private volatile Boolean keepAlive;
+	private volatile Boolean tcpNoDelay;
+
+	private volatile int maxConnections = -1;
+	private final AtomicInteger activeConnections = new AtomicInteger();
+
+	private volatile ServerSocket serverSocket;
+	
+	
+	
+	public AbstractCoreServer(boolean secure) {
+		setSecure(secure);
+	}
+
+	public AbstractCoreServer(int port, boolean secure) {
+		this(port);
+		setSecure(secure);
+	}
+
+	public AbstractCoreServer(int port) {
+		this();
+		setPort(port);
+	}
+
+	public AbstractCoreServer() {
+		super();
+	}
+
+	
+	/**
+	 * The socket is created the first time this is called and then reused. If it has been
+	 * closed (by {@link #stop()}, {@link #closeServerSocket()} or the run method) a new
+	 * one is created, so a server can be stopped and started again.
+	 * <p>
+	 * While the server thread is stopping (after {@link #stop()} and before the thread ends)
+	 * a new socket is not created: this throws a SocketException instead. Before, a run method
+	 * that asked for the socket just after stop() was called (a start() followed at once by
+	 * stop(), say) opened a new socket that nothing closed, so the port stayed in use after the
+	 * server had stopped.
+	 *
+	 * @return ServerSocket used by this Server
+	 *
+	 * @throws IOException
+	 * @throws SocketException if the server is stopping and the socket has been closed
+	 */
+	public ServerSocket getServerSocket() throws IOException {
+		ServerSocket ret = serverSocket;
+		if( ret == null || ret.isClosed() ) {
+			synchronized (this) {
+				ret = serverSocket;
+				if( ret == null || ret.isClosed() ) {
+					//  stop() sets stopping before closeServerSocket() takes this lock, so either the socket
+					//  created here is closed by stop() or stopping is seen here: never one left open.
+					if( stopping && isAlive() ) {
+						throw new SocketException("The server is stopping");
+					}
+					ret = getServerSocketFactory().createServerSocket(getPort(),getBacklog(),getBindAddr());
+					try {
+						ret.setSoTimeout(getAcceptTimeout());
+						if( ret instanceof SSLServerSocket ) {
+							((SSLServerSocket)ret).setNeedClientAuth(isNeedClientAuth());
+						}
+					} catch (IOException | RuntimeException e) {
+						//  Don't leave the port bound
+						try {
+							ret.close();
+						} catch (IOException e2) {
+						}
+						throw e;
+					}
+					serverSocket = ret;
+				}
+			}
+		}
+
+		return ret;
+	}
+
+	/**
+	 * Close the listening socket, if it is open. A thread blocked in accept() gets a
+	 * SocketException at once. Connections that were already accepted are not affected.
+	 * The next call to {@link #getServerSocket()} creates a new socket.
+	 */
+	public void closeServerSocket() {
+		ServerSocket s;
+		synchronized (this) {
+			s = serverSocket;
+			serverSocket = null;
+		}
+		if( s != null ) {
+			try {
+				s.close();
+			} catch (IOException e) {
+				// already closed
+			}
+		}
+	}
+
+	/**
+	 * Stop the server. As well as setting {@link #stopping}, this closes the listening
+	 * socket so a blocked accept() returns at once (with a SocketException) instead of
+	 * waiting for the accept timeout. The run method should check {@link #stopping} when
+	 * accept() throws and exit quietly.
+	 */
+	@Override
+	public void stop() {
+		super.stop();
+		closeServerSocket();
+	}
+
+	
+	/**
+	 * @return the backlog used to create the ServerSocket.
+	 * 
+	 * @see java.net.ServerSocket   
+	 */
+	public int getBacklog() {
+		if( backlog < 0 ) {
+			synchronized(this) {
+				if( backlog < 0 ) {
+					backlog = getIntProperty(PROPERTY_BACKLOG,DEFAULT_BACKLOG);
+				}
+			}
+		}
+		
+		return backlog;
+	}
+
+	/**
+	 * set the listen backlog for the server
+	 *  
+	 * @param backlog
+	 * @see java.net.ServerSocket
+	 */
+	public void setBacklog(int backlog) {
+		this.backlog = backlog;
+	}
+
+	
+	/**
+	 * @return the time to linger on a Socket.close()
+	 * @see Socket#setSoLinger(boolean on, int linger)
+
+	 */
+	public int getLingerTime() {
+		if( lingerTime < 0 ) {
+			synchronized(this) {
+				if( lingerTime < 0 ) {
+					lingerTime = getIntProperty(PROPERTY_SO_LINGER,DEFAULT_SO_LINGER);
+				}
+			}
+		}
+		
+		return lingerTime;
+	}
+
+	/**
+	 * 
+	 * @param lingerTime
+	 * @see Socket#setSoLinger(boolean on, int linger)
+	 */
+	public void setLingerTime(int lingerTime) {
+		this.lingerTime = lingerTime;
+	}
+
+	/**
+	 * @return the local InetAddress the server will bind to 
+	 * @see java.net.ServerSocket 
+	 */
+	public InetAddress getBindAddr() {
+		//  The bind address may be null (all local addresses) so we use a flag to know if the property has been read.
+		if( !bindAddrConfigured ) {
+			synchronized (this) {
+				if( !bindAddrConfigured ) {
+					String tmp = getProperty(PROPERTY_BIND_ADDRESS);
+					if( tmp != null ) {
+						try {
+							bindAddr = InetAddress.getByName(tmp.trim());
+						} catch (UnknownHostException e) {
+							logError("Cannot create BindAddress ("+tmp+").",e);
+							throw new IllegalStateException(e);
+						}
+					}
+					bindAddrConfigured = true;
+				}
+			}
+		}
+		return bindAddr;
+	}
+
+	/**
+	 * set the local InetAddress the server will bind to
+	 * 
+	 * @param bindAddr
+	 * @see java.net.ServerSocket
+	 */
+	public void setBindAddr(InetAddress bindAddr) {
+		this.bindAddr = bindAddr;
+		this.bindAddrConfigured = true;
+	}
+
+	/**
+	 * 
+	 * @param needClientAuth true is client authentication is required on a secure connection.
+	 */
+	public void setNeedClientAuth(boolean needClientAuth) {
+		this.needClientAuth = needClientAuth;
+	}
+
+	/**
+	 * @return true is client authentication is required on a secure connection.
+	 */
+	public boolean isNeedClientAuth() {		
+		return needClientAuth;
+	}
+
+
+	/**
+	 * 
+	 * @return the attributes maintained by this server.
+	 */
+	public Map<String, Object> getAttributes() {
+		return attributes;
+	}
+
+	/**
+	 * @param attributes replace the server attributes.
+	 */
+	public void setAttributes(Map<String, Object> attributes) {
+		this.attributes = attributes;
+	}
+
+
+	
+	/**
+	 * @return the ServerSocketFactory that this server should use to listen for connections.
+	 * 
+	 * @throws IOException
+	 */
+	public ServerSocketFactory getServerSocketFactory() throws IOException {
+		ServerSocketFactory ret = factory;
+		if( ret == null ) {
+			synchronized(this) {
+				ret = factory;
+				if( ret == null ) {
+					if( isSecure() ) {
+						ret = getSSLContext().getServerSocketFactory();						
+					} else {
+						ret = ServerSocketFactory.getDefault();
+					}
+					factory = ret;
+				}
+			}
+		}
+		
+		//  Return the value read or built here, not the field: resetSecurityContext that
+		//  ran after the lock was released could have set the field to null again.
+		return ret;
+	}
+
+	/**
+	 * @param factory to use when creating the ServerSocket 
+	 */
+	public synchronized void setServerSocketFactory(ServerSocketFactory factory) {
+		this.factory = factory;
+	}
+
+	@Override
+	protected synchronized void resetSecurityContext() {
+		super.resetSecurityContext();
+		//  The factory was created from the old SSLContext
+		factory = null;
+	}
+
+
+	/**
+	 * The Server maintains a set of arbitrary values called attributes.  
+	 * Attributes are shared by every connection the server handles (the map is thread safe).
+	 * 
+	 * @param name
+	 * @return the Object associated with the named attribute.
+	 */
+	public Object getAttribute(String name) {
+		return name == null ? null : attributes.get(name);
+	}
+
+	/**
+	 * The Server maintains a set of arbitrary values called attributes.  
+	 * Attributes are shared by every connection the server handles (the map is thread safe).
+	 *  
+	 * @param name
+	 * @param attribute
+	 */
+	public void setAttribute(String name, Object attribute) {
+		if( attribute == null ) {
+			//  ConcurrentHashMap does not allow null values, setting null is the same as removing it.
+			removeAttribute(name);
+		} else {
+			attributes.put(name, attribute);
+		}
+	}
+
+	/**
+	 * The Server maintains a set of arbitrary values called attributes.  
+	 * Attributes are shared by every connection the server handles (the map is thread safe).
+	 * 
+	 * @param name
+	 * @return the values of the attribute that was removed or null in none existed.
+	 */
+	public Object removeAttribute(String name) {
+		return name == null ? null : attributes.remove(name);
+	}
+
+	/**
+	 * @return the port that the server should listen on for connection requests.
+	 */
+	public int getPort() {
+		if( port == -1 ) {
+			port = getIntProperty(PROPERTY_PORT,DEFAULT_PORT);
+		}
+		return port;
+	}
+
+
+	/**
+	 * @param port that the server should listen on for connection requests.
+	 */
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+
+
+	/**
+	 * Called by processors and/or connections to notify the server that a connection was closed
+	 * 
+	 * @param connectionObject
+	 */
+	public void connectionClosed(Object connectionObject) {
+		//  Nothing to do is core server
+	}
+
+	/**
+	 * Configure a newly accepted Socket.
+	 * By default SoTimeout, SoLinger, KeepAlive and TcpNoDelay are set based on current configuration.  
+	 *  
+	 * @param socket
+	 * @throws SocketException
+	 */
+	public void configure(Socket socket) throws SocketException {
+		socket.setSoTimeout(getSocketTimeout());
+		
+		if( isSoLinger() ) {
+			socket.setSoLinger(true, getLingerTime());
+		}		
+		if( isKeepAlive() ) {
+			socket.setKeepAlive(true);
+		}
+		if( isTcpNoDelay() ) {
+			socket.setTcpNoDelay(true);
+		}
+	}
+
+	/**
+	 * @return true if SO_KEEPALIVE should be enabled for newly accepted Sockets (default false).
+	 */
+	public boolean isKeepAlive() {
+		Boolean ret = keepAlive;
+		if( ret == null ) {
+			ret = getBooleanProperty(PROPERTY_KEEP_ALIVE, false);
+			keepAlive = ret;
+		}
+		return ret;
+	}
+
+	/**
+	 * @param keepAlive true to enable SO_KEEPALIVE for newly accepted Sockets.
+	 */
+	public void setKeepAlive(boolean keepAlive) {
+		this.keepAlive = keepAlive;
+	}
+
+	/**
+	 * @return true if TCP_NODELAY should be enabled for newly accepted Sockets (default false).
+	 * Turning it on avoids a delay (often about 40ms) on small writes in request/response protocols.
+	 */
+	public boolean isTcpNoDelay() {
+		Boolean ret = tcpNoDelay;
+		if( ret == null ) {
+			ret = getBooleanProperty(PROPERTY_TCP_NO_DELAY, false);
+			tcpNoDelay = ret;
+		}
+		return ret;
+	}
+
+	/**
+	 * @param tcpNoDelay true to enable TCP_NODELAY for newly accepted Sockets.
+	 */
+	public void setTcpNoDelay(boolean tcpNoDelay) {
+		this.tcpNoDelay = tcpNoDelay;
+	}
+
+	/**
+	 * @return the most connections {@link #tryAcquireConnection()} allows at once, 0 (or less) for no limit.
+	 */
+	public int getMaxConnections() {
+		if( maxConnections < 0 ) {
+			synchronized(this) {
+				if( maxConnections < 0 ) {
+					maxConnections = getIntProperty(PROPERTY_MAX_CONNECTIONS, DEFAULT_MAX_CONNECTIONS);
+				}
+			}
+		}
+		return maxConnections;
+	}
+
+	/**
+	 * @param value the most connections {@link #tryAcquireConnection()} allows at once, 0 for no limit.
+	 * Lowering it doesn't close connections already open; new ones are refused until enough have closed.
+	 */
+	public void setMaxConnections(int value) {
+		//  -1 means "read the property", so any negative value is stored as 0 (no limit)
+		maxConnections = Math.max(value, 0);
+	}
+
+	/**
+	 * Reserve a place for a new connection. The server doesn't call this itself; an accept loop that
+	 * wants to limit how many connections (and handler threads) it has at once uses it like this:
+	 * <pre>
+	 *  Socket socket = getServerSocket().accept();
+	 *  if( !tryAcquireConnection() ) {
+	 *      socket.close();   // too many connections
+	 *      continue;
+	 *  }
+	 *  // start the handler, which calls releaseConnection() in a finally block when it is done
+	 * </pre>
+	 *
+	 * @return true if the connection may go ahead (it must then be released with
+	 *  {@link #releaseConnection()}), false if {@link #getMaxConnections()} are already open.
+	 */
+	public boolean tryAcquireConnection() {
+		int max = getMaxConnections();
+		while( true ) {
+			int current = activeConnections.get();
+			if( max > 0 && current >= max ) {
+				return false;
+			}
+			if( activeConnections.compareAndSet(current, current+1) ) {
+				return true;
+			}
+		}
+	}
+
+	/**
+	 * Give back a place reserved by {@link #tryAcquireConnection()}. Call it exactly once per
+	 * successful tryAcquireConnection(); extra calls are ignored (the count never goes below 0).
+	 */
+	public void releaseConnection() {
+		activeConnections.updateAndGet(n -> n > 0 ? n-1 : 0);
+	}
+
+	/**
+	 * @return how many connections are reserved by {@link #tryAcquireConnection()} and not yet released.
+	 */
+	public int getActiveConnections() {
+		return activeConnections.get();
+	}
+
+	/**
+	 * @return true is SoLInger should be enabled for newly accepted Sockets.
+	 */
+	public boolean isSoLinger() {
+		Boolean ret = isSoLinger;
+		if( ret == null ) {
+			ret = getBooleanProperty(PROPERTY_IS_SO_LINGER, false);
+			isSoLinger = ret;
+		}
+		return ret;
+	}
+
+	/**
+	 * Set to true will enable SoLinger for newly accepted Sockets.
+	 * 
+	 * @param isLinger 
+	 */
+	public void setSoLinger(boolean isLinger) {
+		this.isSoLinger = isLinger;
+	}
+
+	
+	/**
+	 * Set the timeout value used to initialize all newly created Sockets.
+	 * This will control the timeout of client read and write operations.
+	 * 
+	 * @param value
+	 */
+	public void setSocketTimeout(int value) {
+		socketTimeout = value;
+	}
+	
+	/**
+	 * @return The timeout value used to initialize all newly created Sockets.
+	 * This will control the timeout of client read and write operations. 
+	 */
+	public int getSocketTimeout() {
+		if( socketTimeout < 0 ) {
+			synchronized(this) {
+				if( socketTimeout < 0 ) {
+					socketTimeout = getIntProperty(PROPERTY_SOCKET_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+				}
+			}
+		}
+		
+		return socketTimeout;
+	}
+
+	/**
+	 * Set the timeout value used for the accept call
+	 * @param value
+	 */
+	public void setAcceptTimeout(int value) {
+		acceptTimeout = value;
+	}
+	
+	/**
+	 * @return the timeout value for ServerSocket.accept
+	 * @see ServerSocket#accept()
+	 */
+	public int getAcceptTimeout() {
+		if( acceptTimeout < 0 ) {
+			synchronized(this) {
+				if(acceptTimeout < 0 ) {
+					acceptTimeout = getIntProperty(PROPERTY_ACCEPT_TIMEOUT, DEFAULT_ACCEPT_TIMEOUT);
+				}
+			}
+		}
+		
+		return acceptTimeout;
+	}
+
+	
+	
+
+}
