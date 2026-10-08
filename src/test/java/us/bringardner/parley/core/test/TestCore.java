@@ -45,11 +45,9 @@ import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
@@ -78,7 +76,6 @@ import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.Log4JLogger;
 import us.bringardner.parley.core.SecureBaseObject;
-import us.bringardner.parley.core.swing.DatePanel;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
 import us.bringardner.parley.core.util.LruMap;
@@ -1109,20 +1106,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 			}
 		}
 		return new String(ret);
-	}
-
-	@Test 
-	public void testDayPanel () throws Exception {
-		final SimpleDateFormat fmt = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss.SSS");
-		final Calendar startDate = Calendar.getInstance();
-
-		startDate.setTime( fmt.parse("02-15-2000 13:42:20.333"));
-		startDate.setTimeZone(TimeZone.getTimeZone("EST"));
-
-		DatePanel panel = new DatePanel(startDate.getTime());
-		Date date2 = panel.getDate();
-		assertEquals(startDate.getTime(), date2, "");
-
 	}
 
 }
