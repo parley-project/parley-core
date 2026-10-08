@@ -2,8 +2,9 @@
 
 The core of **Parley**, a family of Java libraries for implementing internet protocols: small,
 dependency-free building blocks that the other Parley projects share. It gives you property lookup and logging for any class, threads
-that can be stopped cleanly, a TCP/SSL server and client base, a few utilities, and a set of
-Swing date and time pickers.
+that can be stopped cleanly, a TCP/SSL server and client base, and a few utilities.
+The Swing date and time pickers that used to be here are now a separate library,
+[swing-datetime](https://github.com/tony-bringardner/swing-datetime) (`us.bringardner:swing-datetime`).
 
 - **Java 11** or later
 - **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
@@ -17,7 +18,6 @@ Swing date and time pickers.
 - [Logging](#logging)
 - [Threads and servers](#threads-and-servers)
 - [SSL](#ssl)
-- [Swing components](#swing-components)
 - [Building and testing](#building-and-testing)
 - [Releasing](#releasing)
 - [License](#license)
@@ -80,9 +80,6 @@ public class Mailer extends BaseObject {
 | | `SearchableClassLoader` | Finds the direct (or all) sub classes / implementations of a type in jars and folders. Only the matching classes are loaded. |
 | | `ThreadSafeDateFormat` | A synchronized `SimpleDateFormat`. Deprecated: use `java.time.format.DateTimeFormatter`. |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
-| `us.bringardner.parley.core.swing` | `DatePanel`, `DayPanel`, `TimePanel`, `Clock` | Date and time picker panels. |
-| | `DateDialog`, `TimeDialog`, `DateAndTimeDialog` | Modal dialogs built from the panels. |
-| | `DateTimeCombo` | A date/time spinner with a button that opens `DateAndTimeDialog`. |
 
 ## Properties
 
@@ -250,28 +247,6 @@ Trust managers can be set per object with `setTrustManagers(...)` or for all new
 `SecureBaseObject.setDefaultTrustManagers(...)`. `makecert.sh` creates a self-signed key store
 for testing.
 
-## Swing components
-
-The date and time components work together:
-
-```java
-Date picked = new DateAndTimeDialog().showDialog(new Date(), "Start time");
-
-DateTimeCombo combo = new DateTimeCombo(new Date());   // spinner plus "^" button
-panel.add(combo);
-...
-Date value = combo.getDate();
-```
-
-`DateDialog`, `TimeDialog` and `DateAndTimeDialog` are modal. `showDialog` returns the chosen
-value, or the date you passed in if the user cancels (`isCanceled()` tells you which).
-`TimePanel` shows 12 or 24 hour time (set the default with `-DMilitaryTime=true`), can hide the
-analog `Clock`, and can show seconds and milliseconds. The clock's hands can be dragged.
-
-The parts of `TimePanel`, `DatePanel`, `DayPanel` and `DateTimeCombo` have names
-(`Component.getName()`), such as `hourSpinner`, `todayButton`, `btnBrowse` and `day1` to `day31`,
-so tests and GUI testing tools can find them.
-
 ## Building and testing
 
 ```bash
@@ -281,8 +256,6 @@ mvn verify
 This compiles the library, runs the tests and writes a [JaCoCo](https://www.jacoco.org/)
 coverage report to `target/site/jacoco/index.html`.
 
-- The Swing tests that paint or open dialogs need a display. They are skipped automatically
-  when there is none (for example on a CI server), and briefly open windows when there is.
 - The SSL server test uses `keytool` (from the JDK) to create a test key store if needed.
 - log4j is a test dependency, so the `Log4JLogger` tests run against the real library.
 
