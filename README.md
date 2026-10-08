@@ -65,7 +65,7 @@ public class Mailer extends BaseObject {
 }
 ```
 
-## "What's inside"
+## "What is inside"
 
 | Package | Class | Purpose |
 |---|---|---|
