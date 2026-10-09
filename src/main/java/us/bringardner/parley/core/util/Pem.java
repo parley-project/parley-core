@@ -155,17 +155,10 @@ public final class Pem {
 	}
 
 	private static byte[] hex(String s) throws IOException {
-		if( (s.length() & 1) != 0 ) {
-			throw new IOException("Bad IV in DEK-Info");
-		}
-		byte[] ret = new byte[s.length()/2];
 		try {
-			for (int i = 0; i < ret.length; i++) {
-				ret[i] = (byte) Integer.parseInt(s.substring(2*i, 2*i+2), 16);
-			}
-		} catch (NumberFormatException e) {
+			return Hex.decode(s);
+		} catch (IllegalArgumentException e) {
 			throw new IOException("Bad IV in DEK-Info");
 		}
-		return ret;
 	}
 }

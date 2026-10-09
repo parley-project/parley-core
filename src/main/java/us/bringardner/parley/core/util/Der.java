@@ -12,6 +12,11 @@ import java.util.Arrays;
  */
 public final class Der {
 
+	/** The DER prefix of an Ed25519 SubjectPublicKeyInfo (X.509 public key); the 32 key bytes follow. Do not modify. */
+	public static final byte[] ED25519_SPKI_PREFIX = Hex.decode("302a300506032b6570032100");
+	/** The DER prefix of an Ed25519 PKCS#8 private key; the 32-byte seed follows. Do not modify. */
+	public static final byte[] ED25519_PKCS8_PREFIX = Hex.decode("302e020100300506032b657004220420");
+
 	public static final int INTEGER = 0x02;
 	public static final int BIT_STRING = 0x03;
 	public static final int OCTET_STRING = 0x04;

@@ -47,19 +47,19 @@ import us.bringardner.parley.core.SecureBaseObject;
 public class SocketClient extends SecureBaseObject {
 
 
-	public static final String PROPERTY_SOCKET_TIMEOUT = "SocketTimeout";
+	public static final String PROPERTY_SOCKET_TIMEOUT = SocketOptions.PROPERTY_SOCKET_TIMEOUT;
 
-	public static final int DEFAULT_SOCKET_TIMEOUT = 60000;
+	public static final int DEFAULT_SOCKET_TIMEOUT = SocketOptions.DEFAULT_SOCKET_TIMEOUT;
 
-	public static final String PROPERTY_SO_LINGER = "SoLinger";
+	public static final String PROPERTY_SO_LINGER = SocketOptions.PROPERTY_SO_LINGER;
 
 	/**
 	 * SO_LINGER is in SECONDS (see Socket.setSoLinger).
 	 * This was 60000 (almost 17 hours) which could block Socket.close() for a very long time.
 	 */
-	public static final int DEFAULT_SO_LINGER = 10;
+	public static final int DEFAULT_SO_LINGER = SocketOptions.DEFAULT_SO_LINGER;
 
-	public static final String PROPERTY_IS_SO_LINGER = "IsSoLinger";
+	public static final String PROPERTY_IS_SO_LINGER = SocketOptions.PROPERTY_IS_SO_LINGER;
 
 	/** How long (in milliseconds) {@link #getSocket(String, int)} waits for the connection to be made. */
 	public static final String PROPERTY_CONNECT_TIMEOUT = "ConnectTimeout";
@@ -72,30 +72,25 @@ public class SocketClient extends SecureBaseObject {
 	public static final int DEFAULT_CONNECT_TIMEOUT = 60000;
 
 	/** "true" turns on SO_KEEPALIVE, so a server that disappears is detected. Default false. */
-	public static final String PROPERTY_KEEP_ALIVE = "KeepAlive";
+	public static final String PROPERTY_KEEP_ALIVE = SocketOptions.PROPERTY_KEEP_ALIVE;
 
 	/** "true" turns on TCP_NODELAY (no Nagle delay). Default false. */
-	public static final String PROPERTY_TCP_NO_DELAY = "TcpNoDelay";
+	public static final String PROPERTY_TCP_NO_DELAY = SocketOptions.PROPERTY_TCP_NO_DELAY;
 
 	/** "false" turns off the host name check for secure connections, see {@link #isVerifyHostname()}. */
 	public static final String PROPERTY_VERIFY_HOSTNAME = "VerifyHostname";
 
 
-	private volatile int lingerTime=-1;
 
 	//  null means the VerifyHostname property has not been read yet
 	private volatile Boolean verifyHostname;
 
-	private volatile int socketTimeout=-1;
 
 	private volatile int connectTimeout=-1;
 
 	//  null means the IsSoLinger property has not been read yet
-	private volatile Boolean isSoLinger;
 
 	//  null means the property has not been read yet
-	private volatile Boolean keepAlive;
-	private volatile Boolean tcpNoDelay;
 
 
 	private volatile SocketFactory factory;
@@ -283,140 +278,54 @@ public class SocketClient extends SecureBaseObject {
 		factory = null;
 	}
 
+	private final SocketOptions options = new SocketOptions(this);
 
-	/**
-	 * @return the time to linger on a Socket.close()
-	 * @see Socket#setSoLinger(boolean on, int linger)
+	// ------------------------------------------------------------------ socket options (see SocketOptions)
 
-	 */
 	public int getLingerTime() {
-		if( lingerTime < 0 ) {
-			synchronized(this) {
-				if( lingerTime < 0 ) {
-					lingerTime = getIntProperty(PROPERTY_SO_LINGER,DEFAULT_SO_LINGER);
-				}
-			}
-		}
-
-		return lingerTime;
+		return options.getLingerTime();
 	}
 
-	/**
-	 * 
-	 * @param lingerTime
-	 * @see Socket#setSoLinger(boolean on, int linger)
-	 */
 	public void setLingerTime(int lingerTime) {
-		this.lingerTime = lingerTime;
+		options.setLingerTime(lingerTime);
 	}
 
-	/**
-	 * Configure a newly accepted Socket.
-	 * By default SoTimeout, SoLinger, KeepAlive and TcpNoDelay are set based on current configuration.  
-	 *  
-	 * @param socket
-	 * @throws SocketException
-	 */
-	public void configure(Socket socket) throws SocketException {
-		socket.setSoTimeout(getSocketTimeout());
-
-		if( isSoLinger() ) {
-			socket.setSoLinger(true, getLingerTime());
-		}		
-		if( isKeepAlive() ) {
-			socket.setKeepAlive(true);
-		}
-		if( isTcpNoDelay() ) {
-			socket.setTcpNoDelay(true);
-		}
-	}
-
-	/**
-	 * @return true if SO_KEEPALIVE should be enabled for new Sockets (default false).
-	 */
-	public boolean isKeepAlive() {
-		Boolean ret = keepAlive;
-		if( ret == null ) {
-			ret = getBooleanProperty(PROPERTY_KEEP_ALIVE, false);
-			keepAlive = ret;
-		}
-		return ret;
-	}
-
-	/**
-	 * @param keepAlive true to enable SO_KEEPALIVE for new Sockets.
-	 */
-	public void setKeepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
-	}
-
-	/**
-	 * @return true if TCP_NODELAY should be enabled for new Sockets (default false).
-	 * Turning it on avoids a delay (often about 40ms) on small writes in request/response protocols.
-	 */
-	public boolean isTcpNoDelay() {
-		Boolean ret = tcpNoDelay;
-		if( ret == null ) {
-			ret = getBooleanProperty(PROPERTY_TCP_NO_DELAY, false);
-			tcpNoDelay = ret;
-		}
-		return ret;
-	}
-
-	/**
-	 * @param tcpNoDelay true to enable TCP_NODELAY for new Sockets.
-	 */
-	public void setTcpNoDelay(boolean tcpNoDelay) {
-		this.tcpNoDelay = tcpNoDelay;
-	}
-
-	/**
-	 * @return true is SoLInger should be enabled for newly accepted Sockets.
-	 */
 	public boolean isSoLinger() {
-		Boolean ret = isSoLinger;
-		if( ret == null ) {
-			ret = getBooleanProperty(PROPERTY_IS_SO_LINGER, false);
-			isSoLinger = ret;
-		}
-		return ret;
+		return options.isSoLinger();
 	}
 
-	/**
-	 * Set to true will enable SoLinger for newly accepted Sockets.
-	 * 
-	 * @param isLinger 
-	 */
 	public void setSoLinger(boolean isLinger) {
-		this.isSoLinger = isLinger;
+		options.setSoLinger(isLinger);
 	}
 
-
-	/**
-	 * Set the timeout value used to initialize all newly created Sockets.
-	 * This will control the timeout of client read and write operations.
-	 * 
-	 * @param value
-	 */
-	public void setSocketTimeout(int value) {
-		socketTimeout = value;
+	public boolean isKeepAlive() {
+		return options.isKeepAlive();
 	}
 
-	/**
-	 * @return The timeout value used to initialize all newly created Sockets.
-	 * This will control the timeout of client read and write operations. 
-	 */
+	public void setKeepAlive(boolean keepAlive) {
+		options.setKeepAlive(keepAlive);
+	}
+
+	public boolean isTcpNoDelay() {
+		return options.isTcpNoDelay();
+	}
+
+	public void setTcpNoDelay(boolean tcpNoDelay) {
+		options.setTcpNoDelay(tcpNoDelay);
+	}
+
 	public int getSocketTimeout() {
-		if( socketTimeout < 0 ) {
-			synchronized(this) {
-				if( socketTimeout < 0 ) {
-					socketTimeout = getIntProperty(PROPERTY_SOCKET_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
-				}
-			}
-		}
-
-		return socketTimeout;
+		return options.getSocketTimeout();
 	}
 
+	public void setSocketTimeout(int value) {
+		options.setSocketTimeout(value);
+	}
 
+	/**
+	 * Configure a socket: SoTimeout, SoLinger, KeepAlive and TcpNoDelay are set based on the current settings.
+	 */
+	public void configure(java.net.Socket socket) throws java.net.SocketException {
+		options.configure(socket);
+	}
 }
