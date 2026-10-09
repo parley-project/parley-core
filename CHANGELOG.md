@@ -12,7 +12,7 @@ BjlCore 1.3.1 (below); only names changed.
 - Module name (`Automatic-Module-Name`): `us.bringardner.core` is now `us.bringardner.parley.core`.
 - The Swing components (`DatePanel`, `DayPanel`, `TimePanel`, `Clock`, `DateDialog`, `TimeDialog`,
   `DateAndTimeDialog`, `DateTimeCombo`, `ICalendarDialog`) moved to a separate library outside
-  Parley, `us.bringardner:swing-widgets`, package `us.bringardner.swing.datetime`. parley-core
+  Parley, `us.bringardner:bringardner-swing-widgets`, package `us.bringardner.swing.datetime`. parley-core
   no longer uses Swing or AWT.
 - Property names that start with a class name change with the package, for example
   `us.bringardner.core.BjlLogger.LogLevel` is now `us.bringardner.parley.core.BjlLogger.LogLevel`

@@ -4,7 +4,7 @@ The core of **Parley**, a family of Java libraries for implementing internet pro
 dependency-free building blocks that the other Parley projects share. It gives you property lookup and logging for any class, threads
 that can be stopped cleanly, a TCP/SSL server and client base, and a few utilities.
 The Swing date and time pickers that used to be here are now a separate library,
-[swing-widgets](https://github.com/tony-bringardner/swing-widgets) (`us.bringardner:swing-widgets`).
+[swing-widgets](https://github.com/tony-bringardner/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
 
 - **Java 11** or later
 - **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
