@@ -107,4 +107,14 @@ public final class Hex {
 		}
 		return d;
 	}
+
+	/**
+	 * Append one byte as two upper case hex digits, e.g. for "%2F" or "+2F" escapes.
+	 *
+	 * @param out where to append
+	 * @param b the byte (only the low 8 bits are used)
+	 */
+	public static void appendUpper(StringBuilder out, int b) {
+		out.append(UPPER[(b >>> 4) & 0x0f]).append(UPPER[b & 0x0f]);
+	}
 }
