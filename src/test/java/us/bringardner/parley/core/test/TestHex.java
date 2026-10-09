@@ -57,4 +57,13 @@ public class TestHex {
 		assertThrows(IllegalArgumentException.class, () -> Hex.decode("zz"), "not hex");
 		assertThrows(IllegalArgumentException.class, () -> Hex.decode("0a:ff"), "separators aren't accepted");
 	}
+
+	@Test
+	public void testAppendUpper() {
+		StringBuilder sb = new StringBuilder("%");
+		Hex.appendUpper(sb, 0x2f);
+		Hex.appendUpper(sb, 0x1ff);   // only the low byte
+		Hex.appendUpper(sb, 0);
+		assertEquals("%2FFF00", sb.toString());
+	}
 }
