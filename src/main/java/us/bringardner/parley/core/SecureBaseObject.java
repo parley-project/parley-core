@@ -68,6 +68,19 @@ public class SecureBaseObject extends BaseObject {
 	 */
 	public static final String PROPERTY_FORCE_TLS_VERSION = "ForceTlsVersion";
 
+	/**
+	 * The protocols to enable when the {@value #PROPERTY_FORCE_TLS_VERSION} system property is set.
+	 *
+	 * @return the one forced version, or null if none is forced
+	 */
+	public static String[] getForcedTlsProtocols() {
+		String force = System.getProperty(PROPERTY_FORCE_TLS_VERSION);
+		if( force == null || force.trim().isEmpty() ) {
+			return null;
+		}
+		return new String[] {force.trim()};
+	}
+
 	private static volatile TrustManager [] defaultTrustManagers = null;
 
 
