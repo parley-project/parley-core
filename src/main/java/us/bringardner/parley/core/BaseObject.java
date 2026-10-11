@@ -274,10 +274,12 @@ public class BaseObject {
 	 * Find a property. The first value found is returned:
 	 * <ol>
 	 * <li>The system property <code>prefix.propertyName</code>, where the prefix is the class name
-	 *     (see {@link #getPropertyPrefix()} and {@link #setSupportPrefixProperty(boolean)}).</li>
+	 *     (see {@link #getPropertyPrefix()} and {@link #setSupportPrefixProperty(boolean)}),
+	 *     then <code>superClassName.propertyName</code> for each super class up to (not including) BaseObject.</li>
 	 * <li>The system property <code>propertyName</code>.</li>
 	 * <li>The properties file named after the class (for example <code>/com/example/Mailer.properties</code>),
-	 *     checking <code>prefix.propertyName</code> then <code>propertyName</code>. Then the properties
+	 *     checking <code>prefix.propertyName</code>, <code>className.propertyName</code> (the class the file
+	 *     belongs to) then <code>propertyName</code>. Then the properties
 	 *     files of each super class, up to (not including) BaseObject. Inner classes use the file of
 	 *     their outer class.</li>
 	 * </ol>
@@ -330,9 +332,18 @@ public class BaseObject {
 		String prefix = getPropertyPrefix();
 		//  Built once, it is looked up in the system properties and in every class's properties file
 		String prefixed = prefix == null ? null : prefix+"."+propertyName;
+		Class<?> start = getPropertyClass();
 
 		if( prefixed!=null ) {
 			ret = System.getProperty(prefixed);
+			//  The class name of each level is a prefix too, so a property set for a super class
+			//  (-Dcom.foo.Base.timeout=5) also applies to its sub classes.
+			for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
+				String levelPrefixed = cls.getName()+"."+propertyName;
+				if( !levelPrefixed.equals(prefixed) ) {
+					ret = System.getProperty(levelPrefixed);
+				}
+			}
 		}
 		
 		if( ret == null ) {
@@ -341,7 +352,7 @@ public class BaseObject {
 
 		if( ret == null ) {
 
-			Class<?> cls = getPropertyClass();
+			Class<?> cls = start;
 			while(ret == null && cls != null && cls != BaseObject.class) {
 				String path = cls.getName();
 				int idx = path.indexOf('$');
@@ -349,9 +360,16 @@ public class BaseObject {
 					path = path.substring(0,idx);
 				}
 				Properties p = getPropertyEntry(cls, path);
-				if( p != null ) {
+				if( p != null && p != MISSING ) {
 					if( prefixed!=null ) {
 						ret = p.getProperty(prefixed);
+						if( ret == null ) {
+							//  the class whose file this is, even when this object is a sub class of it
+							String levelPrefixed = cls.getName()+"."+propertyName;
+							if( !levelPrefixed.equals(prefixed) ) {
+								ret = p.getProperty(levelPrefixed);
+							}
+						}
 					}
 					if(ret==null) {
 						ret = p.getProperty(propertyName);
