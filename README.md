@@ -85,9 +85,6 @@ public class Mailer extends BaseObject {
 | | `AddressMatcher` | A list of IP addresses and CIDR networks, for allow lists. Never does a DNS lookup. |
 | | `PrivateKeys`, `Pem`, `Der` | Load RSA and EC private keys from PEM files and key stores. |
 | | `Hex` | Hex encoding and decoding. |
-| | `LruMap` | A `LinkedHashMap` that drops the least recently used entry at a size limit. |
-| | `SearchableClassLoader` | Finds the direct (or all) sub classes / implementations of a type in jars and folders. Only the matching classes are loaded. |
-| | `ThreadSafeDateFormat` | A synchronized `SimpleDateFormat`. Deprecated: use `java.time.format.DateTimeFormatter`. |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
 
 ## Properties
@@ -300,7 +297,7 @@ All in `us.bringardner.parley.core.util`.
   from PKCS#8 and traditional PEM files, encrypted or not, and from PKCS12 and JKS key stores.
   `Pem` and `Der` are the readers it is built on.
 - **`Hex`**: `Hex.encode(bytes)`, `Hex.encode(bytes, true, ":")` for fingerprints, `Hex.decode(text)`.
-- **`LruMap`**, **`SearchableClassLoader`**, **`LogHelper`**: see [What's inside](#whats-inside).
+- **`LogHelper`**: see [What's inside](#whats-inside).
 
 ## Building and testing
 

@@ -53,6 +53,14 @@ BjlCore is now **parley-core**, part of the Parley library family. It continues 
   `NamedThreadFactory.numbered("prefix")` for `prefix1`, `prefix2` ...), optionally non-daemon or
   virtual (Java 21+). Replaces hand-written thread factories in the DNS, mail and NIO framework code.
 
+### Removed
+
+- `LruMap`, `SearchableClassLoader` and `ThreadSafeDateFormat` (use `java.time.format.DateTimeFormatter`).
+  Nothing in the Parley libraries used them.
+- Compatibility members that BjlCore kept for older code: `BaseThread.DEFAULT_ERROR_SLEEP_TIME`,
+  `getErrorSleepTime()` / `setErrorSleepTime(int)`, `SecureBaseObject.init()` and `ParleyLogger.format`.
+  `BaseThread.isStopOnError()` / `setStopOnError(boolean)` stay and are no longer deprecated.
+
 ## BjlCore history
 
 Releases made before the library became parley-core, as `us.bringardner:bjl_core` (BjlCore).
