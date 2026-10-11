@@ -128,18 +128,6 @@ public class SecureBaseObject extends BaseObject {
 	private volatile SSLContext sslContext;
 
 	/**
-	 * Used to read the configuration eagerly. Every setting is read the first
-	 * time it's used, so this does nothing; it's here so subclasses that override it and call
-	 * super.init() still compile (kept for compatibility).
-	 * 
-	 * @deprecated nothing needs to call it; settings are read when first used.
-	 */
-	@Deprecated
-	protected void init() {
-		// settings are read lazily
-	}
-
-	/**
 	 * @return true if Object represent a secure connection.  Otherwise, false.
 	 */
 	public boolean isSecure() {		
