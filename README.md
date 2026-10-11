@@ -6,7 +6,7 @@ that can be stopped cleanly, a TCP/SSL server and client base, and a few utiliti
 The Swing date and time pickers that used to be here are now a separate library,
 [swing-widgets](https://github.com/tony-bringardner/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
 
-- **Java 11** or later
+- **Java 11** or later (virtual threads are used on Java 21+ when you ask for them)
 - **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
 - Apache License 2.0
 
@@ -18,6 +18,7 @@ The Swing date and time pickers that used to be here are now a separate library,
 - [Logging](#logging)
 - [Threads and servers](#threads-and-servers)
 - [SSL](#ssl)
+- [Utilities](#utilities)
 - [Building and testing](#building-and-testing)
 - [Releasing](#releasing)
 - [License](#license)
@@ -34,11 +35,6 @@ parley-core is published to GitHub Packages (and, once released there, Maven Cen
 </dependency>
 ```
 
-> parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
-> `us.bringardner.core`. Moving over means changing the dependency and replacing
-> `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
-> such as `us.bringardner.parley.core.BjlLogger.LogLevel`.
-
 ```xml
 <repositories>
     <repository>
@@ -50,6 +46,12 @@ parley-core is published to GitHub Packages (and, once released there, Maven Cen
 
 GitHub Packages needs a token even for public packages. Add a `<server>` with the id `github`
 to `~/.m2/settings.xml` with your GitHub user name and a token that has the `read:packages` scope.
+
+> parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
+> `us.bringardner.core`. Moving over means changing the dependency and replacing
+> `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
+> such as `us.bringardner.parley.core.BjlLogger.LogLevel`.
+> See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 A class gets properties and logging by extending `BaseObject`:
 
@@ -65,17 +67,24 @@ public class Mailer extends BaseObject {
 }
 ```
 
-## "What is inside"
+## What's inside
 
 | Package | Class | Purpose |
 |---|---|---|
 | `us.bringardner.parley.core` | `BaseObject` | Property lookup and logging for any class. |
 | | `SecureBaseObject` | Adds key store, trust manager and `SSLContext` handling. |
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
+| | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
 | | `ILogger` | The logging interface used everywhere in Parley. |
 | | `BjlLogger`, `Log4JLogger`, `JulLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
+| | `SocketOptions` | The timeout, linger, keep-alive and no-delay settings shared by servers and clients. |
+| | `TlsSockets` | STARTTLS (TLS on a connected socket), SNI and host name checks for `SSLSocket` and `SSLEngine`. |
+| | `TrustAllCertificates` | A trust manager that accepts every certificate, for tests and opportunistic TLS. |
+| | `AddressMatcher` | A list of IP addresses and CIDR networks, for allow lists. Never does a DNS lookup. |
+| | `PrivateKeys`, `Pem`, `Der` | Load RSA and EC private keys from PEM files and key stores. |
+| | `Hex` | Hex encoding and decoding. |
 | | `LruMap` | A `LinkedHashMap` that drops the least recently used entry at a size limit. |
 | | `SearchableClassLoader` | Finds the direct (or all) sub classes / implementations of a type in jars and folders. Only the matching classes are loaded. |
 | | `ThreadSafeDateFormat` | A synchronized `SimpleDateFormat`. Deprecated: use `java.time.format.DateTimeFormatter`. |
@@ -183,6 +192,21 @@ Name, priority, daemon, context class loader and uncaught exception handler can 
 `start()`. Threads are daemons by default. A running thread's daemon flag can't change, so
 `setDaemon` takes effect the next time the thread starts.
 
+### Virtual threads
+
+parley-core is a multi-release jar. On Java 21 and later a `BaseThread` can run on a virtual thread:
+
+- `setVirtual(true)` for one thread, or the system property
+  `-Dus.bringardner.parley.core.virtualThreads=true` for all of them. The default is `false`, and
+  the value `auto` uses virtual threads on Java 24 and later, where blocking socket I/O no longer pins
+  the carrier thread (JEP 491).
+- Before Java 21 the setting is accepted and ignored. `BaseThread.isVirtualSupported()` tells you which.
+- A virtual thread is always a daemon thread at normal priority.
+- `NamedThreadFactory` gives executors named threads: `new NamedThreadFactory("poller")` makes
+  `poller`, `poller-2` ..., `NamedThreadFactory.numbered("worker-")` makes `worker-1`, `worker-2` ...
+
+### Servers
+
 `AbstractCoreServer` is a `BaseThread` for servers. `getServerSocket()` creates a plain or SSL
 server socket from these properties (or the matching setters):
 
@@ -197,6 +221,9 @@ server socket from these properties (or the matching setters):
 | `KeepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
 | `TcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
 | `MaxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
+| `LoginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
+| `MaxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
+| `LoginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |
 | `secure` | `false` | Use SSL (see [SSL](#ssl)) |
 
 ```java
@@ -226,6 +253,11 @@ To limit how many connections are handled at once, an accept loop calls `tryAcqu
 for each accepted socket (closing it if that returns false) and `releaseConnection()` when the
 connection ends. The server doesn't call them itself, so without that nothing is limited.
 
+The login settings are the same kind of thing: `AbstractCoreServer` keeps them (`getLoginFailureDelay()`,
+`getMaxLoginAttempts()`, `isTooManyLoginFailures(failures)`, `getLoginTimeLimit()`, and their setters), and
+the protocol server that handles logins applies them. A server can change the defaults by overriding
+`getDefaultLoginFailureDelay()` and `getDefaultMaxLoginAttempts()`.
+
 `SocketClient` is the client side: `new SocketClient(useSSL).getSocket(host, port)` returns a
 socket configured with the same `SocketTimeout`, `IsSoLinger`, `SoLinger`, `KeepAlive` and
 `TcpNoDelay` properties.
@@ -247,6 +279,29 @@ Trust managers can be set per object with `setTrustManagers(...)` or for all new
 `SecureBaseObject.setDefaultTrustManagers(...)`. `makecert.sh` creates a self-signed key store
 for testing.
 
+`TlsSockets` and `TrustAllCertificates` (see [Utilities](#utilities)) cover the client side. The system
+property `ForceTlsVersion` (for example `-DForceTlsVersion=TLSv1.2`) is available through
+`SecureBaseObject.getForcedTlsProtocols()`; parley-core doesn't apply it itself, the protocol
+libraries that use it do.
+
+## Utilities
+
+All in `us.bringardner.parley.core.util`.
+
+- **`TlsSockets`**: `layer(...)` puts TLS on a connected socket (STARTTLS, FTP's `AUTH TLS`),
+  `configureClient(...)` sets SNI and the HTTPS host name check on an `SSLSocket` or `SSLEngine`, and
+  `hostnameVerifying(factory)` wraps a socket factory so its sockets check the host name.
+  `SocketClient.startTls(socket, host)` does the same with the client's own `SSLContext`.
+- **`TrustAllCertificates`**: accepts every certificate. Only for tests and opportunistic TLS, never
+  where the peer needs to be authenticated.
+- **`AddressMatcher`**: `AddressMatcher.parse("10.0.0.0/8, 192.168.1.5, ::1")` then `matches(inetAddress)`.
+  Only address literals are accepted, never a host name.
+- **`PrivateKeys`**: `PrivateKeys.load(file, passphrase)` reads RSA and EC (P-256, P-384, P-521) keys
+  from PKCS#8 and traditional PEM files, encrypted or not, and from PKCS12 and JKS key stores.
+  `Pem` and `Der` are the readers it is built on.
+- **`Hex`**: `Hex.encode(bytes)`, `Hex.encode(bytes, true, ":")` for fingerprints, `Hex.decode(text)`.
+- **`LruMap`**, **`SearchableClassLoader`**, **`LogHelper`**: see [What's inside](#whats-inside).
+
 ## Building and testing
 
 ```bash
@@ -256,6 +311,9 @@ mvn verify
 This compiles the library, runs the tests and writes a [JaCoCo](https://www.jacoco.org/)
 coverage report to `target/site/jacoco/index.html`.
 
+- Building needs **JDK 21 or later**: the Java 21 classes in `src/main/java21` go into
+  `META-INF/versions/21`. The library itself still runs on Java 11.
+- Tests named `*IT` run in `mvn verify` against the built jar, so on JDK 21+ they exercise the Java 21 classes.
 - The SSL server test uses `keytool` (from the JDK) to create a test key store if needed.
 - log4j is a test dependency, so the `Log4JLogger` tests run against the real library.
 
@@ -264,6 +322,7 @@ coverage report to `target/site/jacoco/index.html`.
 Set the new version in `pom.xml`, then run `./release.sh`. It checks for GitHub credentials,
 runs `mvn clean deploy` to GitHub Packages, commits any changes, tags `v<version>` and pushes.
 Use `./release.sh -n` for a dry run. See the comments at the top of the script for details.
+For Maven Central use `mvn -Prelease clean deploy`.
 
 ## License
 
