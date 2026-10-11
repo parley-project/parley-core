@@ -4,7 +4,7 @@ package us.bringardner.parley.core.util;
  * <PRE>
  * Hexadecimal encoding and decoding, e.g. for digests, fingerprints and DNS record data.
  *
- * java.util.HexFormat does this from Java 17; bjl_core runs on Java 11. These methods also avoid
+ * java.util.HexFormat does this from Java 17; parley-core runs on Java 11. These methods also avoid
  * String.format("%02x") per byte, which is slow.
  *
  * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>

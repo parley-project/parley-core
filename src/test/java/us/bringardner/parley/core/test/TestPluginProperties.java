@@ -17,7 +17,7 @@ import us.bringardner.parley.core.util.LogHelper;
 
 /**
  * Properties files for a class in a separate class loader (a plugin) are found even when the
- * object doing the lookup (here a LogHelper, which is in bjl_core) can't see that loader.
+ * object doing the lookup (here a LogHelper, which is in parley-core) can't see that loader.
  */
 public class TestPluginProperties {
 

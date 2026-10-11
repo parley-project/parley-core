@@ -73,7 +73,7 @@ public class TestLoggerCoverage {
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		ByteArrayOutputStream err = new ByteArrayOutputStream();
-		logger.init("test.bjl.streams");
+		logger.init("test.parley.streams");
 		logger.setLevel(Level.DEBUG);
 		logger.setOut(new PrintStream(out, true));
 		logger.setErr(new PrintStream(err, true));
@@ -84,25 +84,25 @@ public class TestLoggerCoverage {
 
 		String o = out.toString();
 		String e = err.toString();
-		assertTrue(o.contains("INFO test.bjl.streams - to out"), o);
-		assertTrue(e.contains("DEBUG test.bjl.streams - error is null"), "Messages with a (null) Throwable go to err");
+		assertTrue(o.contains("INFO test.parley.streams - to out"), o);
+		assertTrue(e.contains("DEBUG test.parley.streams - error is null"), "Messages with a (null) Throwable go to err");
 		assertTrue(e.contains("java.io.IOException: err exception"));
 		assertFalse(o.contains("to err"));
 	}
 
 	@Test
 	public void testBjlLoggerLevelByName() {
-		System.setProperty("test.bjl.named.LogLevel", "debug");
+		System.setProperty("test.parley.named.LogLevel", "debug");
 		try {
 			BjlLogger logger = new BjlLogger();
-			logger.init("test.bjl.named");
+			logger.init("test.parley.named");
 			assertEquals(Level.DEBUG, logger.getLevel());
 
 			BjlLogger other = new BjlLogger();
 			other.init("");
 			assertEquals(BjlLogger.DEFAULT_LEVEL, other.getLevel(), "An empty name uses the default level");
 		} finally {
-			System.clearProperty("test.bjl.named.LogLevel");
+			System.clearProperty("test.parley.named.LogLevel");
 		}
 	}
 
@@ -112,14 +112,14 @@ public class TestLoggerCoverage {
 		try {
 			System.setProperty(key, "System.err");
 			BjlLogger toErr = new BjlLogger();
-			toErr.init("test.bjl.system.err");
+			toErr.init("test.parley.system.err");
 			assertSame(System.err, toErr.getOut());
 			assertSame(System.err, toErr.getErr());
 
 			System.setProperty(key, " System.out ");
 			BjlLogger toOut = new BjlLogger();
 			toOut.setOut(new PrintStream(new ByteArrayOutputStream()));
-			toOut.init("test.bjl.system.out");
+			toOut.init("test.parley.system.out");
 			assertSame(System.out, toOut.getOut(), "System.out resets any previous stream");
 			assertSame(System.out, toOut.getErr());
 		} finally {
@@ -129,13 +129,13 @@ public class TestLoggerCoverage {
 
 	@Test
 	public void testBjlLoggerLogFileInNewDirectory() throws IOException {
-		File dir = Files.createTempDirectory("bjlcore-logs").toFile();
+		File dir = Files.createTempDirectory("parley-core-logs").toFile();
 		File file = new File(new File(dir, "sub"), "test.log");
 		String key = BJL_PREFIX+BjlLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, file.getPath());
 		try {
 			BjlLogger logger = new BjlLogger();
-			logger.init("test.bjl.newdir");
+			logger.init("test.parley.newdir");
 			logger.error("written to a new directory");
 		} finally {
 			System.clearProperty(key);
@@ -147,14 +147,14 @@ public class TestLoggerCoverage {
 	@Test
 	public void testBjlLoggerLogFileCanNotBeOpened() throws IOException {
 		//  a directory can't be opened as a file, so the logger keeps using System.out
-		File dir = Files.createTempDirectory("bjlcore-not-a-file").toFile();
+		File dir = Files.createTempDirectory("parley-core-not-a-file").toFile();
 		String key = BJL_PREFIX+BjlLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, dir.getAbsolutePath());
 		PrintStream err = System.err;
 		System.setErr(new PrintStream(new ByteArrayOutputStream()));
 		try {
 			BjlLogger logger = new BjlLogger();
-			logger.init("test.bjl.bad.file");
+			logger.init("test.parley.bad.file");
 			assertSame(System.out, logger.getOut());
 		} finally {
 			System.setErr(err);

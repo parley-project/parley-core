@@ -105,7 +105,7 @@ public class TestTlsSockets {
 
 	@BeforeAll
 	public static void setUp() throws Exception {
-		dir = Files.createTempDirectory("bjl-starttls").toFile();
+		dir = Files.createTempDirectory("parley-starttls").toFile();
 		localhostServer = new StartTlsServer(serverContext("localhost.p12", "CN=localhost", "dns:localhost,ip:127.0.0.1"));
 		otherNameServer = new StartTlsServer(serverContext("other.p12", "CN=bringardner.us", null));
 	}

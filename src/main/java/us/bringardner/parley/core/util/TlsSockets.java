@@ -14,7 +14,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 /**
  * <PRE>
- * Client and server TLS set up shared by the BJL protocol clients and servers, so they all
+ * Client and server TLS set up shared by the Parley protocol clients and servers, so they all
  * check certificates the same way.
  *
  * {@link #layer} puts TLS on a connected socket (STARTTLS, FTP's AUTH TLS ...),
