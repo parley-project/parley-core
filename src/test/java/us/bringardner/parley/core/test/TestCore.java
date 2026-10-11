@@ -70,7 +70,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.BaseThread;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
@@ -665,14 +665,14 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 	@Test
 	public void testClassLoader() throws IOException {
 		Class<?>[] expected3 = {
-				TestCoreBase.class,BaseObject.class,BjlLogger.class,SecureBaseObject.class,LogHelper.class
+				TestCoreBase.class,BaseObject.class,ParleyLogger.class,SecureBaseObject.class,LogHelper.class
 		};
 		Class<?>[] expected2 = {
-				SecureBaseObject.class,BjlLogger.class,BaseObject.class,LogHelper.class,TestCoreBase.class
+				SecureBaseObject.class,ParleyLogger.class,BaseObject.class,LogHelper.class,TestCoreBase.class
 		};
 
 		Class<?>[] expected1 = {
-				BaseObject.class,BjlLogger.class,SecureBaseObject.class,LogHelper.class
+				BaseObject.class,ParleyLogger.class,SecureBaseObject.class,LogHelper.class
 		};
 
 
@@ -705,8 +705,8 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 	}
 
 	@Test
-	public void testBjlLogger() {
-		BjlLogger test = new BjlLogger();
+	public void testParleyLogger() {
+		ParleyLogger test = new ParleyLogger();
 		test.init("us.bringardner.parley.core.Log4JLogger");
 
 		runTests(test,ILogger.Level.NONE);
