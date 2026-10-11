@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Properties files of the same name in more than one place on the class path are now merged: the first on
+  the class path wins for each key and later ones fill in the rest. Before, only the first file was read and
+  the others were hidden, so overriding one value meant copying the whole file.
 - `getProperty`: a property set for a super class now also applies to its sub classes, both as a system
   property (`-Dcom.example.Base.timeout=5`) and as a prefixed key in the super class's properties file
   (`com.example.Base.timeout = 5`). Before, the prefix was always the object's own class name, so these
