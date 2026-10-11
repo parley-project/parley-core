@@ -33,6 +33,10 @@
 - `ParleyLogger` builds the time stamp from a per second cached "MM-dd-yyyy HH:mm:ss" and writes the
   entry with a `StringBuilder`; an entry to a file takes about 15% less time and 30% less allocation.
 - `Hex.encode` is about 4 times faster (a byte array instead of a `StringBuilder`).
+- Loading an EC private key that has no public key in the file (OpenSSL's PKCS#8 output, for example)
+  takes about 2.5 ms instead of 12 ms: the public key is worked out with Jacobian coordinates, one
+  modular inverse instead of hundreds. `PrivateKeys.multiply` gives the same points, checked against the
+  JDK's own public keys for P-256, P-384 and P-521.
 - `AddressMatcher.parse` and `isAddressLiteral` no longer compile a regular expression for every
   entry: 6 times faster and 14 times less allocation. The accepted syntax is unchanged.
 
