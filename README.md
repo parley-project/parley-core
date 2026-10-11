@@ -316,10 +316,14 @@ coverage report to `target/site/jacoco/index.html`.
 
 ## Releasing
 
-Set the new version in `pom.xml`, then run `./release.sh`. It checks for GitHub credentials,
-runs `mvn clean deploy` to GitHub Packages, commits any changes, tags `v<version>` and pushes.
-Use `./release.sh -n` for a dry run. See the comments at the top of the script for details.
-For Maven Central use `mvn -Prelease clean deploy`.
+Set the new version in `pom.xml`, then:
+
+- `mvn clean deploy` publishes to GitHub Packages (a `github` server with a token that has the
+  `write:packages` scope in `~/.m2/settings.xml`).
+- `mvn -Prelease clean deploy` publishes to Maven Central; see
+  [parley-parent](https://github.com/tony-bringardner/parley-parent#releasing) for what that needs.
+
+Then tag the release (`v<version>`) and push.
 
 ## License
 
