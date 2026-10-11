@@ -20,6 +20,21 @@
 - The properties file of a super class in another module is now found when the object's class is in a
   different module of the same class loader (before, only a different class loader was checked).
 - README: the Properties section now explains the search order with examples, the module path, and caching.
+- `ParleyLogger` property `LogFlushInterval` (milliseconds, default 0): write the log file on a timer
+  instead of after every entry. About ten times cheaper per entry for a busy logger; the last entries
+  can be lost if the JVM is killed (they are written at a normal exit and by `closeLogFiles()`).
+
+### Performance
+
+- Property lookups don't allocate: the strings that depend only on the class (file names, cache keys,
+  `className.` prefixes) are worked out once per class. On a three level class a plain system property
+  hit takes 29 ns (was 104 ns with super class prefixes, 30 ns before them), a hit in a super class's
+  file 75 ns and a miss 78 ns.
+- `ParleyLogger` builds the time stamp from a per second cached "MM-dd-yyyy HH:mm:ss" and writes the
+  entry with a `StringBuilder`; an entry to a file takes about 15% less time and 30% less allocation.
+- `Hex.encode` is about 4 times faster (a byte array instead of a `StringBuilder`).
+- `AddressMatcher.parse` and `isAddressLiteral` no longer compile a regular expression for every
+  entry: 6 times faster and 14 times less allocation. The accepted syntax is unchanged.
 
 ## parley-core 1.0.0 (2026-10-10)
 

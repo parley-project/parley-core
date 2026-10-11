@@ -66,4 +66,24 @@ public class TestHex {
 		Hex.appendUpper(sb, 0);
 		assertEquals("%2FFF00", sb.toString());
 	}
+
+	@Test
+	public void testEmptyAndPartRanges() {
+		assertEquals("", Hex.encode(new byte[0]));
+		assertEquals("", Hex.encode(new byte[0], true, ":"));
+		byte[] data = {0x01, (byte) 0xab, (byte) 0xcd, 0x7f};
+		assertEquals("abcd", Hex.encode(data, 1, 2, false, null));
+		assertEquals("AB, CD", Hex.encode(data, 1, 2, true, ", "));
+		assertEquals("ab", Hex.encode(data, 1, 1, false, ", "), "no separator after a single byte");
+		assertEquals("01-ab-cd-7f", Hex.encode(data, false, "-"));
+	}
+
+
+	@Test
+	public void testSeparatorsThatAreNotLatin1() {
+		byte[] data = {0x01, (byte) 0xff, 0x10};
+		assertEquals("01\u2192ff\u219210", Hex.encode(data, false, "\u2192"));
+		assertEquals("01 \u00e9 ff \u00e9 10", Hex.encode(data, false, " \u00e9 "));
+	}
+
 }

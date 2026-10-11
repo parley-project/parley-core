@@ -12,10 +12,15 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -60,6 +65,14 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	public static final String PROPERTY_LOG_FILE_COUNT = "LogFileCount";
 	public static final int DEFAULT_LOG_FILE_COUNT = 5;
 	/**
+	 * Milliseconds between flushes of a log file. By default (0) every entry is written to the file as
+	 * soon as it is logged. With a value (100 to 1000 is typical) entries are collected and written
+	 * together, which is several times cheaper for a busy logger; the cost is that the last entries
+	 * (up to this many milliseconds) are lost if the JVM is killed. They are written at a normal exit and
+	 * by {@link #closeLogFiles()}. Like the maximum size, the first logger to open a file decides it.
+	 */
+	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "LogFlushInterval";
+	/**
 	 * The default level is ERROR so that errors are never silently discarded.
 	 * Set the LogLevel property (NONE, ERROR, WARN, INFO, DEBUG) to change it.
 	 */
@@ -67,7 +80,64 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	
 
 	//  DateTimeFormatter is immutable and thread safe, so no locking is required.
-	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss.SSS");
+	private static final DateTimeFormatter SECOND_FORMAT = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss");
+
+	/** "MM-dd-yyyy HH:mm:ss" for one second, so only the milliseconds are worked out for each entry. */
+	private static final class Stamp {
+		final long second;
+		final String text;
+
+		Stamp(long second) {
+			this.second = second;
+			this.text = SECOND_FORMAT.format(LocalDateTime.ofInstant(Instant.ofEpochSecond(second), ZoneId.systemDefault()));
+		}
+	}
+
+	private static volatile Stamp stamp = new Stamp(0);
+
+	/** Appends the time as "MM-dd-yyyy HH:mm:ss.SSS" in the default time zone. */
+	static void appendTimestamp(StringBuilder out, long millis) {
+		long second = Math.floorDiv(millis, 1000L);
+		Stamp s = stamp;
+		if( s.second != second ) {
+			s = new Stamp(second);
+			stamp = s;
+		}
+		int ms = (int) Math.floorMod(millis, 1000L);
+		out.append(s.text).append('.');
+		if( ms < 100 ) {
+			out.append('0');
+		}
+		if( ms < 10 ) {
+			out.append('0');
+		}
+		out.append(ms);
+	}
+
+	/**
+	 * The log file streams that are written by a timer ({@link #PROPERTY_LOG_FLUSH_INTERVAL}). They are plain
+	 * PrintStreams: println of a PrintStream subclass takes a slower path (two writes and two locks).
+	 */
+	private static final java.util.Set<PrintStream> deferredFiles = ConcurrentHashMap.newKeySet();
+
+	private static ScheduledExecutorService flusher;
+
+	/** Flush this stream every interval milliseconds, and when the JVM exits. */
+	private static synchronized void scheduleFlush(PrintStream ps, long interval) {
+		if( flusher == null ) {
+			flusher = Executors.newSingleThreadScheduledExecutor(r -> {
+				Thread t = new Thread(r, "ParleyLogger-flush");
+				t.setDaemon(true);
+				return t;
+			});
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+				for(PrintStream p : logFiles.values()) {
+					p.flush();
+				}
+			}, "ParleyLogger-shutdown"));
+		}
+		flusher.scheduleWithFixedDelay(ps::flush, interval, interval, TimeUnit.MILLISECONDS);
+	}
 
 	//  One PrintStream per log file, shared by all ParleyLoggers, so the file is opened once (in append mode).
 	private static final ConcurrentHashMap<String, PrintStream> logFiles = new ConcurrentHashMap<>();
@@ -192,7 +262,8 @@ public class ParleyLogger extends BaseObject implements ILogger {
 			}  else {
 				long maxSize = parseSize(getProperty(PROPERTY_LOG_FILE_MAX_SIZE));
 				int count = getIntProperty(PROPERTY_LOG_FILE_COUNT, DEFAULT_LOG_FILE_COUNT);
-				PrintStream ps = openLogFile(tmp, maxSize, count);
+				int flushInterval = Math.max(0, getIntProperty(PROPERTY_LOG_FLUSH_INTERVAL, 0));
+				PrintStream ps = openLogFile(tmp, maxSize, count, flushInterval);
 				if( ps != null ) {
 					_out = ps;
 					_err = ps;
@@ -237,7 +308,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 * Open (or find) the stream for a log file. The first logger to open a file decides its maximum
 	 * size and how many old files are kept; loggers that name the same file share the stream.
 	 */
-	private static PrintStream openLogFile(String fileName, long maxSize, int count) {
+	private static PrintStream openLogFile(String fileName, long maxSize, int count, int flushInterval) {
 		File file = new File(fileName).getAbsoluteFile();
 		String key = file.getPath();
 		try {
@@ -256,9 +327,15 @@ public class ParleyLogger extends BaseObject implements ILogger {
 							dir.mkdirs();
 						}
 						//  Buffered, and flushed at the end of every log entry (autoflush), so an entry is
-						//  written with one write instead of one per line of a stack trace.
+						//  written with one write instead of one per line of a stack trace. With a flush
+						//  interval the entries are collected and a timer writes them.
 						LogFileStream stream = new LogFileStream(file, maxSize, count);
-						ret = new PrintStream(new BufferedOutputStream(stream, 8192), true);
+						boolean deferred = flushInterval > 0;
+						ret = new PrintStream(new BufferedOutputStream(stream, deferred ? 32768 : 8192), !deferred);
+						if( deferred ) {
+							deferredFiles.add(ret);
+							scheduleFlush(ret, flushInterval);
+						}
 						logFileStreams.put(key, stream);
 						logFiles.put(key, ret);
 					} catch (IOException e) {
@@ -497,12 +574,18 @@ public class ParleyLogger extends BaseObject implements ILogger {
 			error.printStackTrace(pw);
 			pw.flush();
 			out.print(text.toString());
-			out.flush();
+			if( !deferredFiles.contains(out) ) {
+				out.flush();
+			}
 		}
 	}
 
 	private String formatMessage(Level level,String msg) {
-		return TIME_FORMAT.format(LocalDateTime.now())+" ["+Thread.currentThread().getName()+"] "+level+" "+name+" - "+ msg;
+		String thread = Thread.currentThread().getName();
+		String lvl = level.toString();
+		StringBuilder ret = new StringBuilder(40 + thread.length() + lvl.length() + (name == null ? 4 : name.length()) + (msg == null ? 4 : msg.length()));
+		appendTimestamp(ret, System.currentTimeMillis());
+		return ret.append(" [").append(thread).append("] ").append(lvl).append(' ').append(name).append(" - ").append(msg).toString();
 	}
 
 	public boolean isDebugEnabled() {		
