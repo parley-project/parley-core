@@ -28,10 +28,8 @@ import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
-import us.bringardner.parley.core.SecureBaseObject;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
-import us.bringardner.parley.core.util.SearchableClassLoader;
 
 /**
  * Tests for the reliability fixes (logger defaults and caching, thread visibility,
@@ -270,34 +268,6 @@ public class TestReliability {
 		assertTrue(svr.getLingerTime() <= 60, "Default linger time should be seconds, not milliseconds");
 		assertFalse(svr.isSoLinger());
 		assertFalse(svr.isSecure());
-	}
-
-	@Test
-	public void testClassLoaderDoesNotReturnSuperTypes() throws IOException {
-		File jar = new File("TestFiles/TestSearchableClassLoader.jar").getCanonicalFile();
-		try (SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(jar.getAbsolutePath()))) {
-			List<Class<?>> list = loader.findTarget(SecureBaseObject.class);
-			assertFalse(list.contains(BaseObject.class), "A super class of the target is not a match");
-			assertTrue(list.contains(SecureBaseObject.class));
-			assertTrue(list.contains(BaseThread.class));
-
-			List<Class<?>> all = loader.findTarget(BaseObject.class, true);
-			assertTrue(all.contains(BaseThread.class), "Indirect subclasses are included when requested");
-			assertTrue(all.contains(AbstractCoreServer.class));
-		}
-	}
-
-	@Test
-	public void testClassLoaderPathWithSpaces() throws IOException {
-		File dir = Files.createTempDirectory("parley core with spaces").toFile();
-		File jar = new File(dir, "test jar.jar");
-		Files.copy(new File("TestFiles/TestSearchableClassLoader.jar").toPath(), jar.toPath());
-		try (SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(jar.getAbsolutePath()))) {
-			assertFalse(loader.findTarget(BaseObject.class).isEmpty(), "A path with spaces should be searched");
-		} finally {
-			jar.delete();
-			dir.delete();
-		}
 	}
 
 	private static void waitFor(java.util.function.BooleanSupplier condition, long timeoutMillis) throws InterruptedException {

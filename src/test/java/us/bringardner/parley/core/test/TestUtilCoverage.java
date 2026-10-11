@@ -7,34 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URL;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import javax.net.ServerSocketFactory;
 
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.ParleyLogger;
-import us.bringardner.parley.core.ILogger;
-import us.bringardner.parley.core.SecureBaseObject;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
-import us.bringardner.parley.core.util.LruMap;
-import us.bringardner.parley.core.util.SearchableClassLoader;
 import us.bringardner.parley.core.util.SocketClient;
-import us.bringardner.parley.core.util.ThreadSafeDateFormat;
 
 /**
  * Covers the util package code the original tests did not reach.
@@ -227,108 +213,12 @@ public class TestUtilCoverage {
 		assertNull(svr.getBindAddr());
 	}
 
-	// ---------------- SearchableClassLoader ----------------
-
-	private static File testFile(String path) throws IOException {
-		return new File(path).getCanonicalFile();
-	}
-
-	@Test
-	public void testClassLoaderWithNoPaths() throws IOException {
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(null)) {
-			assertTrue(loader.findTarget(BaseObject.class).isEmpty());
-		}
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList("", null))) {
-			assertEquals(0, loader.getURLs().length, "Empty and null paths are ignored");
-		}
-	}
-
-	@Test
-	public void testClassLoaderSingleClassFile() throws IOException {
-		File cls = testFile("TestFiles/us/bringardner/parley/core/ParleyLogger.class");
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(cls.getPath()))) {
-			List<Class<?>> list = loader.findTarget(BaseObject.class);
-			assertEquals(Arrays.asList(ParleyLogger.class), list);
-		}
-	}
-
-	@Test
-	public void testClassLoaderInterfaceTarget() throws IOException {
-		File jar = testFile("TestFiles/TestSearchableClassLoader.jar");
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(jar.getPath()))) {
-			List<Class<?>> list = loader.findTarget(ILogger.class);
-			assertTrue(list.contains(ParleyLogger.class), "Classes that implement the interface directly match");
-			assertFalse(list.contains(BaseObject.class));
-		}
-	}
-
-	@Test
-	public void testClassLoaderDirectoryContainingJar() throws IOException {
-		//  TestFiles holds both the class files (under us/) and a jar
-		File dir = testFile("TestFiles");
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(dir.getPath()))) {
-			List<Class<?>> list = loader.findTarget(SecureBaseObject.class);
-			assertTrue(list.contains(SecureBaseObject.class));
-			assertEquals(list.size(), list.stream().distinct().count(), "A class found twice is only listed once");
-		}
-	}
-
-	@Test
-	public void testClassLoaderIgnoresBadUrls() throws IOException {
-		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(null)) {
-			//  not a file URL
-			loader.addUrl(new URL("http://localhost/not-searched.jar"));
-			//  a file URL that is not a valid URI (the space) and does not exist
-			loader.addUrl(new URL("file:/no such dir/missing.jar"));
-			assertTrue(loader.findTarget(BaseObject.class).isEmpty());
-		}
-	}
-
-	// ---------------- LogHelper, ThreadSafeDateFormat, LruMap ----------------
+	// ---------------- LogHelper ----------------
 
 	@Test
 	public void testLogHelperForClass() {
 		LogHelper helper = new LogHelper(TestUtilCoverage.class);
 		assertSame(BaseObject.findLogger(TestUtilCoverage.class.getName()), helper.getLogger());
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	public void testThreadSafeDateFormatParse() throws ParseException {
-		ThreadSafeDateFormat fmt = new ThreadSafeDateFormat("yyyy-MM-dd HH:mm:ss");
-		fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
-		Date date = fmt.parse("1970-01-02 00:00:01");
-		assertEquals(86401000L, date.getTime());
-		assertEquals("1970-01-02 00:00:01", fmt.format(date));
-		assertThrows(ParseException.class, () -> fmt.parse("not a date"));
-	}
-
-	@Test
-	public void testLruMapDefaultAndUnbounded() {
-		LruMap<Integer, Integer> map = new LruMap<>();
-		assertEquals(10000, map.getMaxSize());
-
-		LruMap<Integer, Integer> unbounded = new LruMap<>(0);
-		for(int idx = 0; idx < 100; idx++) {
-			unbounded.put(idx, idx);
-		}
-		assertEquals(100, unbounded.size(), "A max size of 0 means no limit");
-	}
-
-	@Test
-	public void testLruMapSetMaxSizeZeroMeansNoLimit() {
-		LruMap<Integer, Integer> map = new LruMap<>(5);
-		for(int idx = 0; idx < 5; idx++) {
-			map.put(idx, idx);
-		}
-		map.setMaxSize(0);
-		assertEquals(5, map.size(), "Removing the limit must not remove entries");
-		for(int idx = 5; idx < 50; idx++) {
-			map.put(idx, idx);
-		}
-		assertEquals(50, map.size());
-		map.setMaxSize(-1);
-		assertEquals(50, map.size());
 	}
 
 	@Test
@@ -349,16 +239,4 @@ public class TestUtilCoverage {
 		assertNull(new LogHelper("no.such.Name").getProperty("LogHelperValue"));
 	}
 
-	@Test
-	public void testLruMapShrink() {
-		LruMap<String, String> map = new LruMap<>(5);
-		for(String key : new String[] {"a","b","c","d","e"}) {
-			map.put(key, key);
-		}
-		map.get("a");	//  a is now the most recently used
-		map.setMaxSize(2);
-		assertEquals(2, map.size());
-		assertTrue(map.containsKey("a"));
-		assertTrue(map.containsKey("e"));
-	}
 }

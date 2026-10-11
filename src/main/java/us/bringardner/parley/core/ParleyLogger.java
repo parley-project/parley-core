@@ -66,13 +66,6 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	public static final Level DEFAULT_LEVEL = Level.ERROR;
 	
 
-	/**
-	 * @deprecated no longer used for formatting log entries (it serialized all logging threads).
-	 * Kept for compatibility.
-	 */
-	@Deprecated
-	public static final us.bringardner.parley.core.util.ThreadSafeDateFormat format = new us.bringardner.parley.core.util.ThreadSafeDateFormat("MM-dd-yyyy HH:mm:ss.SSS");
-
 	//  DateTimeFormatter is immutable and thread safe, so no locking is required.
 	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss.SSS");
 

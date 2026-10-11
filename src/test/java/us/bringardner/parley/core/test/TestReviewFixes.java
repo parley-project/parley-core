@@ -2,18 +2,13 @@ package us.bringardner.parley.core.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -22,9 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseThread;
@@ -32,7 +25,6 @@ import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
-import us.bringardner.parley.core.util.SearchableClassLoader;
 
 /**
  * Fixes from the October 2026 reliability review.
@@ -216,52 +208,4 @@ public class TestReviewFixes {
 		}
 	}
 
-	// ---------------- SearchableClassLoader: symbolic link loops ----------------
-
-	@Test
-	public void testClassSearchSurvivesSymbolicLinkLoops() throws Exception {
-		Path dir = Files.createTempDirectory("parley-loop");
-		try {
-			Path sub = Files.createDirectories(dir.resolve("a/b"));
-			try {
-				//  Two links back to the top: before the fix the search never finished
-				Files.createSymbolicLink(sub.resolve("up1"), dir);
-				Files.createSymbolicLink(sub.resolve("up2"), dir);
-			} catch (UnsupportedOperationException | IOException | SecurityException e) {
-				Assumptions.abort("Symbolic links are not available here: "+e);
-			}
-			SearchableClassLoader loader = SearchableClassLoader.getLoader(List.of(dir.toString()));
-			try {
-				List<Class<?>> found = assertTimeoutPreemptively(Duration.ofSeconds(20), () -> loader.findTarget(Runnable.class));
-				assertTrue(found.isEmpty());
-			} finally {
-				loader.close();
-			}
-		} finally {
-			try (Stream<Path> paths = Files.walk(dir)) {
-				//  walk doesn't follow the links, so only the links themselves are deleted
-				paths.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-			}
-		}
-	}
-
-	@Test
-	public void testClassPathListedTwiceIsSearchedOnce() throws Exception {
-		String classes = Path.of(TestReviewFixes.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString();
-		try (SearchableClassLoader once = SearchableClassLoader.getLoader(List.of(classes));
-				SearchableClassLoader twice = SearchableClassLoader.getLoader(List.of(classes, classes))) {
-			List<String> a = names(once.findTarget(BaseThread.class));
-			List<String> b = names(twice.findTarget(BaseThread.class));
-			assertFalse(a.isEmpty(), "The test classes include BaseThread subclasses");
-			assertEquals(a, b);
-		}
-	}
-
-	private static List<String> names(List<Class<?>> classes) {
-		List<String> ret = new ArrayList<>();
-		for (Class<?> c : classes) {
-			ret.add(c.getName());
-		}
-		return ret;
-	}
 }

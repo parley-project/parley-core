@@ -64,7 +64,7 @@ public class BaseObject {
 	//  Kept per loader because the same class name can have a different file (or none) in another loader:
 	//  with one cache for every loader, the first loader searched decided the result for all of them.
 	//  The keys are weak so a plugin's loader can still be garbage collected; the values only hold Strings.
-	//  Each map is a ConcurrentHashMap, so looking up a property doesn't take a lock. (It was an LruMap,
+	//  Each map is a ConcurrentHashMap, so looking up a property doesn't take a lock. (It used to be an LRU map,
 	//  and because even get() reorders an LRU map every lookup took the same global lock.)
 	private static final Map<ClassLoader, ConcurrentHashMap<String, Properties>> loaderCaches = new WeakHashMap<>();
 

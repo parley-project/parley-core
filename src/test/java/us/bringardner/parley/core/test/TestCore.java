@@ -26,8 +26,6 @@
 package us.bringardner.parley.core.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -42,10 +40,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -68,22 +63,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.BaseThread;
 import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.Log4JLogger;
-import us.bringardner.parley.core.SecureBaseObject;
 import us.bringardner.parley.core.util.AbstractCoreServer;
-import us.bringardner.parley.core.util.LogHelper;
-import us.bringardner.parley.core.util.LruMap;
-import us.bringardner.parley.core.util.SearchableClassLoader;
 import us.bringardner.parley.core.util.SocketClient;
-import us.bringardner.parley.core.util.ThreadSafeDateFormat;
-
-
 
 public class TestCore extends TestCoreBase {
 
@@ -104,8 +91,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 
 	@BeforeEach
 	public void setUp() throws Exception {
-
-
 
 		expecedLogging.put(Level.NONE, "Start level NONE\n"
 				+ "isErrorEnabled false\n"
@@ -498,8 +483,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 				+ "\n"
 				+ "");
 
-
-
 	}
 
 	@AfterEach
@@ -561,8 +544,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 		return ret;
 
 	}
-
-
 
 	private void compare(String expected, String actual) {
 		// "11-01-2023 10:27:54.940 [main] 11/01/2024 07:52 ERROR us.bringardner.parley.core.Log4JLogger - Test error no exception";
@@ -657,52 +638,8 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 		runTests(test,ILogger.Level.WARN);
 		runTests(test,ILogger.Level.DEBUG);
 
-
-
-
 	}
 
-	@Test
-	public void testClassLoader() throws IOException {
-		Class<?>[] expected3 = {
-				TestCoreBase.class,BaseObject.class,ParleyLogger.class,SecureBaseObject.class,LogHelper.class
-		};
-		Class<?>[] expected2 = {
-				SecureBaseObject.class,ParleyLogger.class,BaseObject.class,LogHelper.class,TestCoreBase.class
-		};
-
-		Class<?>[] expected1 = {
-				BaseObject.class,ParleyLogger.class,SecureBaseObject.class,LogHelper.class
-		};
-
-
-		File file2 = new File("TestFiles/TestSearchableClassLoader.jar").getCanonicalFile();
-
-		SearchableClassLoader l2 = SearchableClassLoader.getLoader(Arrays.asList(file2.getAbsolutePath()));
-		List<Class<?>> list2 = l2.findTarget(BaseObject.class);
-		assertEquals(expected2.length, list2.size(), "jar flile List sizes do not match");
-		for (int idx = 0; idx < expected2.length; idx++) {
-			assertEquals(list2.get(idx), expected2[idx], "jar file Class does not match");
-		}
-
-		File file = new File("TestFiles/us").getCanonicalFile();		
-		SearchableClassLoader l1 = SearchableClassLoader.getLoader(Arrays.asList(file.getAbsolutePath()));
-		List<Class<?>> list1 = l1.findTarget(BaseObject.class);
-		assertEquals(list1.size(), expected1.length, "directory List sizes do not match");
-		for (int idx = 0; idx < expected1.length; idx++) {
-			assertEquals(list1.get(idx), expected1[idx], "directory Class does not match");
-		}
-
-
-
-		SearchableClassLoader l = SearchableClassLoader.getClassPathLoader();
-		List<Class<?>> list = l.findTarget(BaseObject.class);
-		assertTrue(list.size()==expected3.length, "class path List sizes do not match");
-		for (int idx = 0; idx < expected3.length; idx++) {
-			assertEquals(list.get(idx), expected3[idx], "class path Class does not match");
-		}
-
-	}
 
 	@Test
 	public void testParleyLogger() {
@@ -953,90 +890,6 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 			}
 		}
 	}
-
-	@Test
-	public void testLruMap() {
-
-		int maxSize = 10;
-
-		// Create the map
-		LruMap<String, String> map = new LruMap<>(maxSize);
-		// file the map with one more value than it has room for
-		for(int idx = 0,sz=map.getMaxSize()+1; idx <sz; idx++  ) {
-			map.put("Key"+idx, "Value"+idx);
-		}
-
-		assertEquals(maxSize, map.size(), "Map is the wrong size");
-		//  Now the map should have eliminate the first entry Key0...
-		assertNull(map.get("Key0"), "Key0 was not removed from lru map");
-		// this makes Key3 the MRU entry
-		assertNotNull(map.get("Key3"), "Key3 is not in the lru map");
-		// and another entry will cause "Key1" to be removed
-		map.put("Key11", "Value11");
-		assertEquals(maxSize, map.size(), "Map is the wrong size");
-		//  Now the map should have eliminate the first entry Key0...
-		assertNull(map.get("Key1"), "Key1 was not removed from lru map");
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	public void testThreadSafeDateFormat() {
-		class DateFormatThread extends BaseThread {
-			private Date date;
-			private ThreadSafeDateFormat fmt;
-			DateFormatThread (Date date,ThreadSafeDateFormat fmt){
-				this.date = date;
-				this.fmt = fmt;
-			}
-
-			List<String> results = new ArrayList<String>();
-			@Override
-			public void run() {
-				started = running = true;
-				while(!stopping) {
-					//  use the fmt object as fast as possible
-					results.add(fmt.format(date));
-				}				
-				running = false;
-			}
-		}
-		//  I really can't understand why SimpleDateFormat is NOT tread safe
-		ThreadSafeDateFormat fmt = new ThreadSafeDateFormat("MM-dd-yyyy HH:mm:ss.SSS");
-		final Date date = new Date();
-		final String expect = fmt.format(date);		
-		DateFormatThread[] threads = new DateFormatThread[10];
-
-		for(int idx = 0; idx < 10; idx++) {
-			threads[idx] = new DateFormatThread(date, fmt);
-			threads[idx].start();
-		}
-
-		try {
-			//  Let them run and compete with each other for 2 seconds
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-		}
-
-		// Stop them all
-		for(DateFormatThread thread : threads) {
-			thread.stop();			
-		}
-
-		try {
-			//  give them time to stop
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-		}
-		// check the results
-		for(DateFormatThread thread : threads) {
-			for(String val : thread.results) {
-				assertEquals(val, expect, "Formatted date is not correct");
-			}
-		}
-	}
-
-
-
 
 	public void createCert() throws IOException {
 
