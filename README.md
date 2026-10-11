@@ -50,7 +50,7 @@ to `~/.m2/settings.xml` with your GitHub user name and a token that has the `rea
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
 > `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
-> such as `us.bringardner.parley.core.BjlLogger.LogLevel`.
+> such as `us.bringardner.parley.core.ParleyLogger.LogLevel`. `BjlLogger` is now `ParleyLogger`.
 > See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 A class gets properties and logging by extending `BaseObject`:
@@ -76,7 +76,7 @@ public class Mailer extends BaseObject {
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
 | | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
 | | `ILogger` | The logging interface used everywhere in Parley. |
-| | `BjlLogger`, `Log4JLogger`, `JulLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`. |
+| | `ParleyLogger`, `Log4JLogger`, `JulLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
 | | `SocketOptions` | The timeout, linger, keep-alive and no-delay settings shared by servers and clients. |
@@ -123,17 +123,17 @@ The logger is chosen once, the first time one is needed:
 
 1. The class named by the system property `ILogger`, if it implements `ILogger`
 2. `Log4JLogger`, if log4j 2 (`log4j-api`) is on the class path
-3. `BjlLogger` otherwise
+3. `ParleyLogger` otherwise
 
 Loggers are shared by name (the class name by default), so objects of the same class use one
 logger. `BaseObject.findLogger(name)` returns the logger for any name, and
 `setLogger(...)` replaces it for one object. Levels are `DEBUG`, `INFO`, `WARN`, `ERROR` and `NONE`.
 
-### BjlLogger
+### ParleyLogger
 
 The built-in logger writes `MM-dd-yyyy HH:mm:ss.SSS [thread] LEVEL name - message` lines.
 It is configured with properties (see [Properties](#properties); the class name prefix is
-`us.bringardner.parley.core.BjlLogger`):
+`us.bringardner.parley.core.ParleyLogger`):
 
 | Property | Meaning |
 |---|---|
@@ -148,7 +148,7 @@ disk, say), that is reported once on `System.err`, and again when writing works 
 
 If another program moves or deletes the log file (logrotate, say), a new one is started under the same
 name within a second; a file emptied in place (`copytruncate`) is written to from its new end.
-`BjlLogger.closeLogFiles()` flushes and closes all log files so they can be moved (Windows won't move
+`ParleyLogger.closeLogFiles()` flushes and closes all log files so they can be moved (Windows won't move
 an open file); the next entry opens the file again.
 
 Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`, `WARNING`, `TRACE`,

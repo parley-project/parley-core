@@ -10,7 +10,7 @@ import java.util.Date;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseThread;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.SecureBaseObject;
 
 /**
@@ -65,8 +65,8 @@ public class TestApiCompatibility {
 
 	@Test
 	public void loggerFormat() {
-		assertNotNull(BjlLogger.format);
-		assertEquals(19 + 4, BjlLogger.format.format(new Date(0)).length(), "MM-dd-yyyy HH:mm:ss.SSS");
+		assertNotNull(ParleyLogger.format);
+		assertEquals(19 + 4, ParleyLogger.format.format(new Date(0)).length(), "MM-dd-yyyy HH:mm:ss.SSS");
 	}
 
 }

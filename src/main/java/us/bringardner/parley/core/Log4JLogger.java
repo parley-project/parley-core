@@ -153,7 +153,7 @@ public class Log4JLogger implements ILogger {
 	/**
 	 * Without a log4j2 implementation (a provider, such as log4j-core) the log4j2 API only prints
 	 * errors to the console, after a warning that it found no provider. So BaseObject only uses
-	 * Log4JLogger by default when this is true, and BjlLogger (which follows the LogLevel and LogFile
+	 * Log4JLogger by default when this is true, and ParleyLogger (which follows the LogLevel and LogFile
 	 * properties) otherwise.
 	 *
 	 * @return true if the log4j2 API and a log4j2 implementation are both in the class path.
@@ -207,7 +207,7 @@ public class Log4JLogger implements ILogger {
 	private volatile boolean extended;
 	private volatile String name = Log4JLogger.class.getName();
 	//  Used if log4j is not available (or can't create the logger) so logging is never lost.
-	private volatile BjlLogger fallback;
+	private volatile ParleyLogger fallback;
 
 
 	public Log4JLogger() {
@@ -217,8 +217,8 @@ public class Log4JLogger implements ILogger {
 	}
 	
 	private void useFallback(String name, Throwable error) {
-		System.err.println("Can't create log4J logger. Using BjlLogger instead.  Error="+error);
-		BjlLogger tmp = new BjlLogger();
+		System.err.println("Can't create log4J logger. Using ParleyLogger instead.  Error="+error);
+		ParleyLogger tmp = new ParleyLogger();
 		tmp.init(name);
 		fallback = tmp;
 	}
@@ -266,7 +266,7 @@ public class Log4JLogger implements ILogger {
 	 * @param error may be null, {@link #NO_ERROR} when the caller used a method without a Throwable
 	 */
 	void log(String fqcn, Level level, String msg, Throwable error) {
-		BjlLogger fb = fallback;
+		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			logTo(fb, level, msg, error);
 			return;
@@ -302,7 +302,7 @@ public class Log4JLogger implements ILogger {
 
 	/*
 	 * Call the same method on the fallback logger as the caller called on this one 
-	 * (BjlLogger writes debug(msg) and debug(msg,null) to different streams).
+	 * (ParleyLogger writes debug(msg) and debug(msg,null) to different streams).
 	 */
 	private static void logTo(ILogger logger, Level level, String msg, Throwable error) {
 		boolean one = error == NO_ERROR;
@@ -316,7 +316,7 @@ public class Log4JLogger implements ILogger {
 	}
 
 	boolean isEnabled(Level level) {
-		BjlLogger fb = fallback;
+		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			switch (level) {
 			case DEBUG: return fb.isDebugEnabled();
@@ -428,7 +428,7 @@ public class Log4JLogger implements ILogger {
 	}
 
 	public void setLevel(Level level) {
-		BjlLogger fb = fallback;
+		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			fb.setLevel(level);
 			return;
@@ -484,7 +484,7 @@ public class Log4JLogger implements ILogger {
 	}
 
 	public Level getLevel() {	
-		BjlLogger fb = fallback;
+		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			return fb.getLevel();
 		}

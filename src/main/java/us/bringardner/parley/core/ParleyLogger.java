@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  *
  */
-public class BjlLogger extends BaseObject implements ILogger {
+public class ParleyLogger extends BaseObject implements ILogger {
 
 	public static final String PROPERTY_LOG_LEVEL = "LogLevel";
 	public static final String PROPERTY_LOG_FILE = "LogFile";
@@ -76,7 +76,7 @@ public class BjlLogger extends BaseObject implements ILogger {
 	//  DateTimeFormatter is immutable and thread safe, so no locking is required.
 	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss.SSS");
 
-	//  One PrintStream per log file, shared by all BjlLoggers, so the file is opened once (in append mode).
+	//  One PrintStream per log file, shared by all ParleyLoggers, so the file is opened once (in append mode).
 	private static final ConcurrentHashMap<String, PrintStream> logFiles = new ConcurrentHashMap<>();
 	//  The file streams under those PrintStreams, for closeLogFiles()
 	private static final ConcurrentHashMap<String, LogFileStream> logFileStreams = new ConcurrentHashMap<>();
@@ -395,7 +395,7 @@ public class BjlLogger extends BaseObject implements ILogger {
 		}
 
 		/**
-		 * Close the file (see {@link BjlLogger#closeLogFiles()}); the next write opens it again.
+		 * Close the file (see {@link ParleyLogger#closeLogFiles()}); the next write opens it again.
 		 */
 		synchronized void release() {
 			if( out != null ) {
@@ -428,12 +428,12 @@ public class BjlLogger extends BaseObject implements ILogger {
 				size += len;
 				if( failing ) {
 					failing = false;
-					System.err.println("BjlLogger: writing to "+file+" works again.");
+					System.err.println("ParleyLogger: writing to "+file+" works again.");
 				}
 			} catch (IOException e) {
 				if( !failing ) {
 					failing = true;
-					System.err.println("BjlLogger: can't write to "+file+" ("+e+"). Log entries are being lost.");
+					System.err.println("ParleyLogger: can't write to "+file+" ("+e+"). Log entries are being lost.");
 				}
 				throw e;
 			}
@@ -462,7 +462,7 @@ public class BjlLogger extends BaseObject implements ILogger {
 					Files.delete(file.toPath());
 				}
 			} catch (IOException e) {
-				System.err.println("BjlLogger: can't start a new log file, still appending to "+file+" ("+e+")");
+				System.err.println("ParleyLogger: can't start a new log file, still appending to "+file+" ("+e+")");
 				open();
 				//  Don't try again until the file has grown by another maxSize
 				size = 0;
