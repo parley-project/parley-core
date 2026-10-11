@@ -33,6 +33,15 @@ public final class Hex {
 	private Hex() {
 	}
 
+	private static boolean isLatin1(String s) {
+		for(int i = 0; i < s.length(); i++) {
+			if( s.charAt(i) > 0xff ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/**
 	 * @param data the bytes
 	 * @return two lower case hex digits per byte, e.g. "0aff"
@@ -71,16 +80,41 @@ public final class Hex {
 	public static String encode(byte[] data, int off, int len, boolean upperCase, String separator) {
 		java.util.Objects.checkFromIndexSize(off, len, data.length);
 		char[] digits = upperCase ? UPPER : LOWER;
+		if( len == 0 ) {
+			return "";
+		}
 		boolean sep = separator != null && !separator.isEmpty();
-		StringBuilder ret = new StringBuilder(len * (2 + (sep ? separator.length() : 0)));
+		int sepLen = sep ? separator.length() : 0;
+		int total = len * 2 + (len - 1) * sepLen;
+		if( sep && !isLatin1(separator) ) {
+			char[] out = new char[total];
+			int o = 0;
+			for(int i = off; i < off + len; i++ ) {
+				if( i > off ) {
+					separator.getChars(0, sepLen, out, o);
+					o += sepLen;
+				}
+				int b = data[i] & 0xff;
+				out[o++] = digits[b >>> 4];
+				out[o++] = digits[b & 0x0f];
+			}
+			return new String(out);
+		}
+		//  Hex digits and the usual separators are Latin-1, which a String stores as bytes: filling a
+		//  byte array and making the String from it is much cheaper than a StringBuilder or char array.
+		byte[] out = new byte[total];
+		int o = 0;
 		for(int i = off; i < off + len; i++ ) {
 			if( sep && i > off ) {
-				ret.append(separator);
+				for(int k = 0; k < sepLen; k++ ) {
+					out[o++] = (byte) separator.charAt(k);
+				}
 			}
 			int b = data[i] & 0xff;
-			ret.append(digits[b >>> 4]).append(digits[b & 0x0f]);
+			out[o++] = (byte) digits[b >>> 4];
+			out[o++] = (byte) digits[b & 0x0f];
 		}
-		return ret.toString();
+		return new String(out, java.nio.charset.StandardCharsets.ISO_8859_1);
 	}
 
 	/**

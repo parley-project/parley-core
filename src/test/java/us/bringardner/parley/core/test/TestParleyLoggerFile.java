@@ -281,4 +281,85 @@ public class TestParleyLoggerFile {
 		assertEquals(List.of("before"), messages(archived));
 		assertEquals(List.of("after"), messages(log));
 	}
+
+	// ---------------- timestamp and LogFlushInterval ----------------
+
+	private static final java.util.regex.Pattern STAMP = java.util.regex.Pattern.compile(
+			"^(\\d\\d)-(\\d\\d)-(\\d{4}) (\\d\\d):(\\d\\d):(\\d\\d)\\.(\\d{3}) \\[");
+
+	@Test
+	public void testTimestampIsTheCurrentTimeInTheDefaultZone() throws IOException {
+		File dir = Files.createTempDirectory("parley-stamp").toFile();
+		File log = new File(dir, "app.log");
+		ParleyLogger logger = logger("test.stamp", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
+		java.time.LocalDateTime before = java.time.LocalDateTime.now();
+		//  enough entries to cross a second boundary and use every millisecond padding
+		for(int i = 0; i < 300; i++) {
+			logger.error("entry "+i);
+			if( i % 100 == 0 ) {
+				try { Thread.sleep(7); } catch (InterruptedException e) { }
+			}
+		}
+		java.time.LocalDateTime after = java.time.LocalDateTime.now();
+		ParleyLogger.closeLogFiles();
+		List<String> lines = lines(log);
+		assertEquals(300, lines.size());
+		for(String line : lines) {
+			java.util.regex.Matcher m = STAMP.matcher(line);
+			assertTrue(m.find(), "timestamp format: "+line);
+			java.time.LocalDateTime t = java.time.LocalDateTime.of(Integer.parseInt(m.group(3)), Integer.parseInt(m.group(1)),
+					Integer.parseInt(m.group(2)), Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)),
+					Integer.parseInt(m.group(6)), Integer.parseInt(m.group(7)) * 1_000_000);
+			assertTrue(!t.isBefore(before.minusNanos(1_000_000)) && !t.isAfter(after.plusNanos(1_000_000)), line+" is outside "+before+" .. "+after);
+		}
+	}
+
+	@Test
+	public void testFlushIntervalCollectsEntriesAndWritesThemLater() throws Exception {
+		File dir = Files.createTempDirectory("parley-deferred").toFile();
+		File log = new File(dir, "app.log");
+		ParleyLogger logger = logger("test.deferred", props(
+				ParleyLogger.PROPERTY_LOG_FILE, log.getPath(),
+				ParleyLogger.PROPERTY_LOG_FLUSH_INTERVAL, "200"));
+		for(int i = 0; i < 50; i++) {
+			logger.error("entry "+i);
+		}
+		logger.error("with a stack trace", new RuntimeException("boom"));
+		assertEquals(0, log.length(), "nothing is written until the timer (or close) flushes");
+
+		long end = System.currentTimeMillis() + 5000;
+		while( log.length() == 0 && System.currentTimeMillis() < end ) {
+			Thread.sleep(20);
+		}
+		List<String> lines = lines(log);
+		assertTrue(lines.size() > 50, "the timer wrote the entries, "+lines.size()+" lines");
+		assertEquals(49, number(lines.get(49)));
+		assertTrue(lines.stream().anyMatch(l -> l.contains("RuntimeException: boom")));
+	}
+
+	@Test
+	public void testCloseLogFilesWritesCollectedEntries() throws IOException {
+		File dir = Files.createTempDirectory("parley-deferred-close").toFile();
+		File log = new File(dir, "app.log");
+		ParleyLogger logger = logger("test.deferred.close", props(
+				ParleyLogger.PROPERTY_LOG_FILE, log.getPath(),
+				ParleyLogger.PROPERTY_LOG_FLUSH_INTERVAL, "60000"));
+		logger.error("entry 1");
+		logger.error("entry 2");
+		assertEquals(0, log.length());
+		ParleyLogger.closeLogFiles();
+		assertEquals(2, lines(log).size());
+	}
+
+	@Test
+	public void testNoFlushIntervalWritesEveryEntryAtOnce() throws IOException {
+		File dir = Files.createTempDirectory("parley-immediate").toFile();
+		File log = new File(dir, "app.log");
+		ParleyLogger logger = logger("test.immediate", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
+		logger.error("entry 1");
+		assertEquals(1, lines(log).size());
+		logger.error("entry 2", new RuntimeException("x"));
+		assertTrue(lines(log).size() > 2);
+	}
+
 }
