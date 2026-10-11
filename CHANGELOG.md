@@ -1,45 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
-- Properties files of the same name in more than one place on the class path are now merged: the first on
-  the class path wins for each key and later ones fill in the rest. Before, only the first file was read and
-  the others were hidden, so overriding one value meant copying the whole file.
-- `getProperty`: a property set for a super class now also applies to its sub classes, both as a system
-  property (`-Dcom.example.Base.timeout=5`) and as a prefixed key in the super class's properties file
-  (`com.example.Base.timeout = 5`). Before, the prefix was always the object's own class name, so these
-  were only seen by the super class itself. The object's own prefix is still looked up first.
-
-### Added
-
-- Properties files can be put in `META-INF/parley/<fully qualified class name>.properties`. A file in a
-  package of a named module is encapsulated and was silently not found by `BaseObject` (unless the
-  module opened the package to it); this location never is.
-- The properties file of a super class in another module is now found when the object's class is in a
-  different module of the same class loader (before, only a different class loader was checked).
-- README: the Properties section now explains the search order with examples, the module path, and caching.
-- `ParleyLogger` property `LogFlushInterval` (milliseconds, default 0): write the log file on a timer
-  instead of after every entry. About ten times cheaper per entry for a busy logger; the last entries
-  can be lost if the JVM is killed (they are written at a normal exit and by `closeLogFiles()`).
-
-### Performance
-
-- Property lookups don't allocate: the strings that depend only on the class (file names, cache keys,
-  `className.` prefixes) are worked out once per class. On a three level class a plain system property
-  hit takes 29 ns (was 104 ns with super class prefixes, 30 ns before them), a hit in a super class's
-  file 75 ns and a miss 78 ns.
-- `ParleyLogger` builds the time stamp from a per second cached "MM-dd-yyyy HH:mm:ss" and writes the
-  entry with a `StringBuilder`; an entry to a file takes about 15% less time and 30% less allocation.
-- `Hex.encode` is about 4 times faster (a byte array instead of a `StringBuilder`).
-- Loading an EC private key that has no public key in the file (OpenSSL's PKCS#8 output, for example)
-  takes about 2.5 ms instead of 12 ms: the public key is worked out with Jacobian coordinates, one
-  modular inverse instead of hundreds. `PrivateKeys.multiply` gives the same points, checked against the
-  JDK's own public keys for P-256, P-384 and P-521.
-- `AddressMatcher.parse` and `isAddressLiteral` no longer compile a regular expression for every
-  entry: 6 times faster and 14 times less allocation. The accepted syntax is unchanged.
-
 ## parley-core 1.0.0 (2026-10-10)
 
 BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
@@ -79,6 +39,13 @@ BjlCore is now **parley-core**, part of the Parley library family. It continues 
 - A `KeyStorePassword` or `KeyStoreName` property that wasn't set when it was first needed is not looked
   for again, so setting it later (as a system property, say) has no effect on that object. Call
   `setKeyStorePassword` / `setKeyStoreFileName`; setting null looks the property up again.
+- Properties files of the same name in more than one place on the class path are now merged: the first on
+  the class path wins for each key and later ones fill in the rest. Before, only the first file was read and
+  the others were hidden, so overriding one value meant copying the whole file.
+- `getProperty`: a property set for a super class now also applies to its sub classes, both as a system
+  property (`-Dcom.example.Base.timeout=5`) and as a prefixed key in the super class's properties file
+  (`com.example.Base.timeout = 5`). Before, the prefix was always the object's own class name, so these
+  were only seen by the super class itself. The object's own prefix is still looked up first.
 
 ### Added
 
@@ -92,6 +59,30 @@ BjlCore is now **parley-core**, part of the Parley library family. It continues 
 - `NamedThreadFactory`: named daemon threads for executors (`name`, `name-2` ..., or
   `NamedThreadFactory.numbered("prefix")` for `prefix1`, `prefix2` ...), optionally non-daemon or
   virtual (Java 21+). Replaces hand-written thread factories in the DNS, mail and NIO framework code.
+- Properties files can be put in `META-INF/parley/<fully qualified class name>.properties`. A file in a
+  package of a named module is encapsulated and was silently not found by `BaseObject` (unless the
+  module opened the package to it); this location never is.
+- The properties file of a super class in another module is now found when the object's class is in a
+  different module of the same class loader (before, only a different class loader was checked).
+- README: the Properties section now explains the search order with examples, the module path, and caching.
+- `ParleyLogger` property `LogFlushInterval` (milliseconds, default 0): write the log file on a timer
+  instead of after every entry. About ten times cheaper per entry for a busy logger; the last entries
+  can be lost if the JVM is killed (they are written at a normal exit and by `closeLogFiles()`).
+
+### Performance
+
+- Property lookups don't allocate: the strings that depend only on the class (file names, cache keys,
+  `className.` prefixes) are worked out once per class. On a three level class a plain system property
+  hit takes 29 ns (30 ns in BjlCore 1.3.0), a hit in a super class's file 75 ns (134 ns) and a miss
+  78 ns (224 ns), with no allocation.
+- `ParleyLogger` builds the time stamp from a per second cached "MM-dd-yyyy HH:mm:ss" and writes the
+  entry with a `StringBuilder`; an entry to a file takes about 15% less time and 30% less allocation.
+- Loading an EC private key that has no public key in the file (OpenSSL's PKCS#8 output, for example)
+  takes about 2.5 ms instead of 12 ms: the public key is worked out with Jacobian coordinates, one
+  modular inverse instead of hundreds. `PrivateKeys.multiply` gives the same points, checked against the
+  JDK's own public keys for P-256, P-384 and P-521.
+- `AddressMatcher.parse` and `isAddressLiteral` no longer compile a regular expression for every
+  entry: 6 times faster and 14 times less allocation. The accepted syntax is unchanged.
 
 ### Removed
 
