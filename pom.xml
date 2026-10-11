@@ -28,11 +28,9 @@
 		<parley.moduleName>us.bringardner.parley.core</parley.moduleName>
 		<junit.version>5.11.4</junit.version>
 		<log4j.version>2.24.3</log4j.version>
-		<jacoco.version>0.8.15</jacoco.version>
 	</properties>
 
 	<build>
-		<!-- <sourceDirectory>src</sourceDirectory> -->
 		<testResources>
 			<testResource>
 				<directory>src/test/resources</directory>
@@ -45,10 +43,31 @@
 		</testResources>
 
 		<plugins>
+			<!-- Building needs JDK 21+ for src/main/java21 (the library itself runs on Java 11) -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>enforce-build-jdk</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireJavaVersion>
+									<version>[21,)</version>
+									<message>parley-core is built with JDK 21 or later (it contains Java 21 classes in a multi-release jar). It still runs on Java 11.</message>
+								</requireJavaVersion>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<!--
-			  Multi-release jar: everything is compiled for Java 11 as before; the few
-			  classes in src/main/java21 are compiled for Java 21 into META-INF/versions/21, where
-			  only Java 21+ JVMs look. The library still runs on Java 11; building it needs JDK 21+.
+			  Multi-release jar: everything is compiled for Java 11; the few classes in
+			  src/main/java21 are compiled for Java 21 into META-INF/versions/21, where only
+			  Java 21+ JVMs look. The library still runs on Java 11; building it needs JDK 21+.
 			-->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -77,7 +96,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>3.5.2</version>
 				<executions>
 					<execution>
 						<goals>
@@ -87,10 +105,20 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- Plugins listed only in pluginManagement are NOT executed, so the source jar is declared here. -->
+			<!-- Sources jar attached at package (not deploy) so it exists BEFORE the deploy plugin runs.
+			     The parent's release profile adds the same execution for Maven Central. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<!-- Automatic-Module-Name comes from parley-parent; Multi-Release is added here -->
 			<plugin>
@@ -105,97 +133,39 @@
 					</archive>
 				</configuration>
 			</plugin>
-			<!-- Code coverage: 'mvn verify' writes the report to target/site/jacoco/index.html -->
+			<!-- Code coverage: 'mvn verify' writes the report to target/site/jacoco/index.html.
+			     If an argLine is ever configured for surefire, write it as <argLine>@{argLine} ...</argLine>
+			     so it does not replace the JaCoCo agent set by prepare-agent. -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
+				<executions>
+					<!-- Attaches the JaCoCo agent to the surefire test JVM -->
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<!-- HTML, XML and CSV reports in target/site/jacoco -->
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+						<configuration>
+							<!-- The Java 21 copies of multi-release classes have the same names as the
+							     Java 11 ones, which the report can't hold twice -->
+							<excludes>
+								<exclude>META-INF/versions/**</exclude>
+							</excludes>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
-
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.13.0</version>
-					<configuration>
-						<release>${maven.compiler.release}</release>
-					</configuration>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-source-plugin</artifactId>
-					<version>3.3.1</version>
-					<executions>
-						<execution>
-							<id>attach-sources</id>
-							<goals>
-								<goal>jar-no-fork</goal>
-							</goals>
-							<!-- package (not deploy) so the source jar is attached BEFORE the deploy plugin runs -->
-							<phase>package</phase>
-							<configuration>
-								<skipSource>false</skipSource>
-								<attach>true</attach>
-							</configuration>
-						</execution>
-					</executions>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<version>3.1.4</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.5.2</version>
-					<!-- If an argLine is ever added here, write it as <argLine>@{argLine} ...</argLine>
-					     so it does not replace the JaCoCo agent set by prepare-agent. -->
-				</plugin>
-
-				<plugin>
-					<groupId>org.jacoco</groupId>
-					<artifactId>jacoco-maven-plugin</artifactId>
-					<version>${jacoco.version}</version>
-					<executions>
-						<!-- Attaches the JaCoCo agent to the surefire test JVM -->
-						<execution>
-							<id>prepare-agent</id>
-							<goals>
-								<goal>prepare-agent</goal>
-							</goals>
-						</execution>
-						<!-- HTML, XML and CSV reports in target/site/jacoco -->
-						<execution>
-							<id>report</id>
-							<phase>verify</phase>
-							<goals>
-								<goal>report</goal>
-							</goals>
-							<configuration>
-								<!-- The Java 21 copies of multi-release classes have the same
-								     names as the Java 11 ones, which the report can't hold twice -->
-								<excludes>
-									<exclude>META-INF/versions/**</exclude>
-								</excludes>
-							</configuration>
-						</execution>
-					</executions>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 	</build>
-
-	<!-- GitHub Packages, used by release.sh. Maven Central releases use: mvn -Prelease clean deploy -->
-	<distributionManagement>
-		<repository>
-			<id>github</id>
-			<name>tony-bringardner</name>
-			<url>https://maven.pkg.github.com/tony-bringardner/parley-core</url>
-		</repository>
-	</distributionManagement>
 
 	<dependencies>
 		<!-- log4j is only used for testing, Log4JLogger accesses it by reflection at runtime.
