@@ -255,43 +255,87 @@ public final class PrivateKeys {
 	}
 
 	/**
-	 * k * P on the curve (affine double and add). Not constant time: only for loading keys,
-	 * where it runs once.
+	 * k * P on the curve, with the intermediate points in Jacobian coordinates (x = X / Z^2, y = Y / Z^3),
+	 * so there is one modular inverse at the end instead of one for every step. The result is the same as
+	 * the textbook affine double and add, about ten times faster.
+	 * <p>
+	 * Not constant time (it branches on the bits of k): only for loading keys, where the scalar is
+	 * already in a file on this machine and a timing attack on it isn't a concern. Don't use it to
+	 * sign or to agree a key.
 	 */
 	public static ECPoint multiply(ECPoint point, BigInteger k, ECParameterSpec params) {
+		if( point.equals(ECPoint.POINT_INFINITY) || k.signum() == 0 ) {
+			return ECPoint.POINT_INFINITY;
+		}
 		BigInteger p = ((ECFieldFp) params.getCurve().getField()).getP();
 		BigInteger a = params.getCurve().getA();
-		ECPoint result = ECPoint.POINT_INFINITY;
-		ECPoint addend = point;
-		for (int i = 0; i < k.bitLength(); i++) {
+		BigInteger x = point.getAffineX(), y = point.getAffineY();
+		if( k.signum() < 0 ) {
+			//  (-k) * P = k * (-P)
+			k = k.negate();
+			y = p.subtract(y).mod(p);
+		}
+		//  The result so far, in Jacobian coordinates; Z = 0 is the point at infinity.
+		BigInteger rx = BigInteger.ONE, ry = BigInteger.ONE, rz = BigInteger.ZERO;
+		for(int i = k.bitLength() - 1; i >= 0; i--) {
+			//  double
+			if( rz.signum() != 0 ) {
+				if( ry.signum() == 0 ) {
+					rx = BigInteger.ONE; ry = BigInteger.ONE; rz = BigInteger.ZERO;
+				} else {
+					BigInteger ysq = ry.multiply(ry).mod(p);
+					BigInteger s = rx.multiply(ysq).shiftLeft(2).mod(p);
+					BigInteger zsq = rz.multiply(rz).mod(p);
+					BigInteger m = rx.multiply(rx).multiply(BigInteger.valueOf(3))
+							.add(a.multiply(zsq.multiply(zsq))).mod(p);
+					BigInteger nx = m.multiply(m).subtract(s.shiftLeft(1)).mod(p);
+					BigInteger ny = m.multiply(s.subtract(nx)).subtract(ysq.multiply(ysq).shiftLeft(3)).mod(p);
+					BigInteger nz = ry.multiply(rz).shiftLeft(1).mod(p);
+					rx = nx; ry = ny; rz = nz;
+				}
+			}
+			//  add P (affine, so Z2 = 1)
 			if( k.testBit(i) ) {
-				result = add(result, addend, p, a);
+				if( rz.signum() == 0 ) {
+					rx = x; ry = y; rz = BigInteger.ONE;
+				} else {
+					BigInteger zsq = rz.multiply(rz).mod(p);
+					BigInteger u2 = x.multiply(zsq).mod(p);
+					BigInteger s2 = y.multiply(zsq).multiply(rz).mod(p);
+					BigInteger h = u2.subtract(rx).mod(p);
+					BigInteger r = s2.subtract(ry).mod(p);
+					if( h.signum() == 0 ) {
+						if( r.signum() == 0 ) {
+							//  the same point: double it (P is affine, Z = 1)
+							BigInteger ysq = y.multiply(y).mod(p);
+							BigInteger s = x.multiply(ysq).shiftLeft(2).mod(p);
+							BigInteger m = x.multiply(x).multiply(BigInteger.valueOf(3)).add(a).mod(p);
+							BigInteger nx = m.multiply(m).subtract(s.shiftLeft(1)).mod(p);
+							BigInteger ny = m.multiply(s.subtract(nx)).subtract(ysq.multiply(ysq).shiftLeft(3)).mod(p);
+							BigInteger nz = y.shiftLeft(1).mod(p);
+							rx = nx; ry = ny; rz = nz;
+						} else {
+							//  P + (-P)
+							rx = BigInteger.ONE; ry = BigInteger.ONE; rz = BigInteger.ZERO;
+						}
+					} else {
+						BigInteger hsq = h.multiply(h).mod(p);
+						BigInteger hcu = hsq.multiply(h).mod(p);
+						BigInteger v = rx.multiply(hsq).mod(p);
+						BigInteger nx = r.multiply(r).subtract(hcu).subtract(v.shiftLeft(1)).mod(p);
+						BigInteger ny = r.multiply(v.subtract(nx)).subtract(ry.multiply(hcu)).mod(p);
+						BigInteger nz = rz.multiply(h).mod(p);
+						rx = nx; ry = ny; rz = nz;
+					}
+				}
 			}
-			addend = add(addend, addend, p, a);
 		}
-		return result;
-	}
-
-	private static ECPoint add(ECPoint q, ECPoint r, BigInteger p, BigInteger a) {
-		if( q.equals(ECPoint.POINT_INFINITY) ) {
-			return r;
+		if( rz.signum() == 0 ) {
+			return ECPoint.POINT_INFINITY;
 		}
-		if( r.equals(ECPoint.POINT_INFINITY) ) {
-			return q;
-		}
-		BigInteger x1 = q.getAffineX(), y1 = q.getAffineY(), x2 = r.getAffineX(), y2 = r.getAffineY();
-		BigInteger lambda;
-		if( x1.equals(x2) ) {
-			if( !y1.equals(y2) || y1.signum() == 0 ) {
-				return ECPoint.POINT_INFINITY;
-			}
-			lambda = x1.pow(2).multiply(BigInteger.valueOf(3)).add(a).multiply(y1.shiftLeft(1).modInverse(p)).mod(p);
-		} else {
-			lambda = y2.subtract(y1).multiply(x2.subtract(x1).modInverse(p)).mod(p);
-		}
-		BigInteger x3 = lambda.pow(2).subtract(x1).subtract(x2).mod(p);
-		BigInteger y3 = lambda.multiply(x1.subtract(x3)).subtract(y1).mod(p);
-		return new ECPoint(x3, y3);
+		BigInteger zinv = rz.modInverse(p);
+		BigInteger zinv2 = zinv.multiply(zinv).mod(p);
+		return new ECPoint(rx.multiply(zinv2).mod(p), ry.multiply(zinv2).multiply(zinv).mod(p));
 	}
 
 	private static char[] need(char[] passphrase) throws KeyFormatException {
