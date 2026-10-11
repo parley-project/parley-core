@@ -204,10 +204,12 @@ object's own class by default.
 
 ### Where the files can be
 
-- **Class path** (the usual case). The file is found through the object's class, so an application can
-  replace a library's `com/example/Mailer.properties` by putting its own file with that name earlier on
-  the class path. The file is replaced as a whole, it is not merged with the one it hides, so the
-  replacement needs every value you want to keep.
+- **Class path** (the usual case). The file is found through the object's class. If more than one file
+  of that name is on the class path they are **merged**: the first one on the class path wins for each
+  key and the later ones fill in the keys it doesn't define. So an application can override one value
+  of a library's `com/example/Mailer.properties` by putting its own `com/example/Mailer.properties`
+  (with just that key) earlier on the class path, and the library's other defaults stay.
+  To remove a default instead of replacing it, give the key an empty value (`SmtpHost =`).
 - **Module path** (Java modules). A file in a package of a named module is encapsulated. `BaseObject`
   can't see it unless the module opens the package to `us.bringardner.parley.core`. A library in a named module
   can instead put its defaults in `META-INF/parley/<fully qualified class name>.properties`, for example

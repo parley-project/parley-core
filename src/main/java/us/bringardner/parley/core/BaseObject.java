@@ -5,6 +5,10 @@ package us.bringardner.parley.core;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -217,6 +221,8 @@ public class BaseObject {
 	 *     module is encapsulated, and is not visible to BaseObject unless that module opens the package to it.
 	 *     A META-INF resource never is, so a library in a named module can put its defaults there.</li>
 	 * </ol>
+	 * If more than one file of that name is on the class path, they are merged: the first one on the class
+	 * path wins for each key, and the later ones fill in the keys it doesn't define.
 	 * What was found (or not) is cached for each class loader and module, so the files are not searched
 	 * for every time a property is read.
 	 *  
@@ -272,24 +278,78 @@ public class BaseObject {
 		if( ret == null ) {
 			//  Load outside any lock so a slow class path search does not block every other thread.
 			//  If two threads load the same file at the same time, the last one wins (the content is the same).
-			ret = MISSING;
-			try(InputStream in = via.getResourceAsStream(fn)){
-				if( in != null ) {
-					Properties tmp = new Properties();
-					tmp.load(in);
-					ret = tmp;
-				}
-			} catch(IOException e) {
-				// We cannot call the normal logging functions here because it could potentially cause a deadlock.
-				System.err.println("Error reading properties for "+name+" e=("+e+")");
-				e.printStackTrace(System.err);
-			}
+			ret = readProperties(via, fn);
 			cache.put(key, ret);
 			if( cache.size() > maxProperties && maxProperties > 0 ) {
 				trimPropertyCache(cache);
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * Reads the file of this name, and merges the other files of that name the class's loader can see:
+	 * the first one found (the first on the class path) wins for each key, the others fill in what it
+	 * doesn't define. A class in a named module only sees the file of its own module.
+	 * <p>
+	 * The first file is found the way it always was, with {@link Class#getResourceAsStream(String)}, so a
+	 * class loader that overrides getResourceAsStream is still asked. The loader's other files
+	 * (the first of them is usually the same file again, which is harmless) only fill in missing keys.
+	 * 
+	 * @return the merged Properties, or {@link #MISSING} if there is no file.
+	 */
+	private static Properties readProperties(Class<?> via, String fn) {
+		Properties ret = null;
+		try(InputStream in = via.getResourceAsStream(fn)) {
+			if( in != null ) {
+				ret = load(new Properties(), in, fn);
+			}
+		} catch(IOException e) {
+			// We cannot call the normal logging functions here because it could potentially cause a deadlock.
+			System.err.println("Error reading properties for "+fn+" e=("+e+")");
+			e.printStackTrace(System.err);
+		}
+
+		if( via.getModule().isNamed() ) {
+			//  A class in a named module can't see the files of any other module (or the class path)
+			return ret == null ? MISSING : ret;
+		}
+
+		List<URL> urls = new ArrayList<>();
+		try {
+			String rn = fn.startsWith("/") ? fn.substring(1) : fn;
+			ClassLoader cl = via.getClassLoader();
+			Enumeration<URL> e = cl == null ? ClassLoader.getSystemResources(rn) : cl.getResources(rn);
+			while( e.hasMoreElements() ) {
+				urls.add(e.nextElement());
+			}
+		} catch(IOException e) {
+			System.err.println("Error searching for properties "+fn+" e=("+e+")");
+		}
+
+		for(URL url : urls) {
+			try(InputStream in = url.openStream()) {
+				Properties tmp = load(new Properties(), in, fn);
+				if( ret == null ) {
+					ret = tmp;
+				} else {
+					for(String key : tmp.stringPropertyNames()) {
+						if( !ret.containsKey(key) ) {
+							ret.setProperty(key, tmp.getProperty(key));
+						}
+					}
+				}
+			} catch(IOException e) {
+				System.err.println("Error reading properties for "+fn+" from "+url+" e=("+e+")");
+				e.printStackTrace(System.err);
+			}
+		}
+		return ret == null ? MISSING : ret;
+	}
+
+	private static Properties load(Properties p, InputStream in, String fn) throws IOException {
+		p.load(in);
+		return p;
 	}
 
 	/**
