@@ -200,8 +200,15 @@ public class TestParleyLoggerFile {
 		return ret;
 	}
 
+	/** Windows won't move or delete a file while the logger has it open; see closeLogFiles(). */
+	private static void assumeFilesCanBeMovedWhileOpen() {
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().startsWith("windows"),
+				"Windows refuses to move or delete a file that is open");
+	}
+
 	@Test
 	public void testMovedFileIsReplaced() throws Exception {
+		assumeFilesCanBeMovedWhileOpen();
 		File dir = Files.createTempDirectory("parley-moved").toFile();
 		File log = new File(dir, "app.log");
 		ParleyLogger logger = logger("test.moved", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
@@ -220,6 +227,7 @@ public class TestParleyLoggerFile {
 
 	@Test
 	public void testDeletedFileIsRecreated() throws Exception {
+		assumeFilesCanBeMovedWhileOpen();
 		File dir = Files.createTempDirectory("parley-deleted").toFile();
 		File log = new File(dir, "app.log");
 		ParleyLogger logger = logger("test.deleted", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
