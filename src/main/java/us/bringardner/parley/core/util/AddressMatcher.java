@@ -16,7 +16,9 @@ import java.util.List;
  * (IPv4) or 0 to 128 (IPv6); anything else is rejected rather than matching too much or too little.
  * An IPv4 address and an IPv6 address never match each other.
  *
- * Instances are immutable and thread safe.
+ * Instances are immutable and thread safe. {@link #matches} compares the address with each entry in
+ * turn (about 2-4 ns per entry), which suits the lists this is meant for, up to a few hundred
+ * entries. A list of thousands of networks (an imported blocklist, say) needs a different structure.
  *
  * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>
  *
