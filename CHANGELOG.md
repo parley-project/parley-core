@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `getProperty`: a property set for a super class now also applies to its sub classes, both as a system
+  property (`-Dcom.example.Base.timeout=5`) and as a prefixed key in the super class's properties file
+  (`com.example.Base.timeout = 5`). Before, the prefix was always the object's own class name, so these
+  were only seen by the super class itself. The object's own prefix is still looked up first.
+
+### Added
+
+- Properties files can be put in `META-INF/parley/<fully qualified class name>.properties`. A file in a
+  package of a named module is encapsulated and was silently not found by `BaseObject` (unless the
+  module opened the package to it); this location never is.
+- The properties file of a super class in another module is now found when the object's class is in a
+  different module of the same class loader (before, only a different class loader was checked).
+- README: the Properties section now explains the search order with examples, the module path, and caching.
+
 ## parley-core 1.0.0 (2026-10-10)
 
 BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
