@@ -268,11 +268,19 @@ public class BaseObject {
 	 *  or {@link #MISSING} if it isn't there.
 	 */
 	private static Properties loadProperties(Class<?> via, String fn) {
-		//  A class in a named module only sees its own module, so the same resource name
-		//  can be found (or not) through two classes in the same class loader.
+		return loadProperties(via, fn, cacheKey(via, fn));
+	}
+
+	/**
+	 * A class in a named module only sees its own module, so the same resource name
+	 * can be found (or not) through two classes in the same class loader.
+	 */
+	private static String cacheKey(Class<?> via, String fn) {
 		Module module = via.getModule();
-		String key = module.isNamed() ? module.getName()+":"+fn : fn;
-		String name = fn;
+		return module.isNamed() ? module.getName()+":"+fn : fn;
+	}
+
+	private static Properties loadProperties(Class<?> via, String fn, String key) {
 		ConcurrentHashMap<String, Properties> cache = classCaches.get(via);
 		Properties ret = cache.get(key);
 		if( ret == null ) {
@@ -399,6 +407,104 @@ public class BaseObject {
 
 
 	/**
+	 * Everything {@link #getProperty(String, String)} needs to know about a class that doesn't depend on
+	 * the property being looked up: the classes searched (the class, then its super classes up to
+	 * BaseObject), their properties file names and cache keys, and the "className." prefixes. Computed
+	 * once per class, so a lookup doesn't build any of these strings again.
+	 * <p>
+	 * It holds only strings and the classes themselves (a super class can't be unloaded before its
+	 * sub class), never the Properties: those stay in the per-class-loader caches, so
+	 * {@link BaseObject#clearPropertyCache()} and {@link BaseObject#setMaxProperties(int)} work as before.
+	 */
+	private static final class LookupPlan {
+		/** Property names whose key strings are kept, so names made up at run time can't grow the map without limit. */
+		private static final int MAX_NAMES = 128;
+
+		private final Class<?> start;
+		private final Class<?>[] classes;
+		private final String[] levelPrefix;
+		private final String[] fn;
+		private final String[] keyViaStart;
+		private final String[] keyViaClass;
+		private final boolean[] sameSource;
+		private final String[] metaFn;
+		private final String[] metaKey;
+		/** The default property prefix of an object of this class, its name. */
+		private final String defaultPrefix;
+		private final ConcurrentHashMap<String, String[]> keys = new ConcurrentHashMap<>();
+
+		LookupPlan(Class<?> start) {
+			this.start = start;
+			java.util.List<Class<?>> chain = new java.util.ArrayList<>();
+			for(Class<?> c = start; c != null && c != BaseObject.class; c = c.getSuperclass()) {
+				chain.add(c);
+			}
+			int n = chain.size();
+			classes = chain.toArray(new Class<?>[n]);
+			levelPrefix = new String[n];
+			fn = new String[n];
+			keyViaStart = new String[n];
+			keyViaClass = new String[n];
+			sameSource = new boolean[n];
+			metaFn = new String[n];
+			metaKey = new String[n];
+			for(int i = 0; i < n; i++) {
+				Class<?> c = classes[i];
+				String full = c.getName();
+				//  An inner class uses the file of its outer class
+				String name = full;
+				int idx = name.indexOf('$');
+				if( idx > 0 ) {
+					name = name.substring(0, idx);
+				}
+				String path = name.length() > 0 ? "/"+name.replace('.', '/') : name;
+				levelPrefix[i] = full+".";
+				fn[i] = path+".properties";
+				keyViaStart[i] = cacheKey(start, fn[i]);
+				keyViaClass[i] = cacheKey(c, fn[i]);
+				sameSource[i] = BaseObject.sameSource(c, start);
+				metaFn[i] = META_INF_DIR+name+".properties";
+				metaKey[i] = cacheKey(c, metaFn[i]);
+			}
+			defaultPrefix = start.getName();
+		}
+
+		/** @return for each class searched, "className.propertyName" */
+		String[] keys(String propertyName) {
+			String[] ret = keys.get(propertyName);
+			if( ret == null ) {
+				ret = new String[levelPrefix.length];
+				for(int i = 0; i < ret.length; i++) {
+					ret[i] = levelPrefix[i]+propertyName;
+				}
+				if( keys.size() < MAX_NAMES ) {
+					keys.putIfAbsent(propertyName, ret);
+				}
+			}
+			return ret;
+		}
+
+		/** The same places, in the same order, as {@link BaseObject#getPropertyEntry(Class, String)}. */
+		Properties entry(int i) {
+			Properties ret = loadProperties(start, fn[i], keyViaStart[i]);
+			if( ret == MISSING && !sameSource[i] ) {
+				ret = loadProperties(classes[i], fn[i], keyViaClass[i]);
+			}
+			if( ret == MISSING ) {
+				ret = loadProperties(classes[i], metaFn[i], metaKey[i]);
+			}
+			return ret;
+		}
+	}
+
+	private static final ClassValue<LookupPlan> lookupPlans = new ClassValue<>() {
+		@Override
+		protected LookupPlan computeValue(Class<?> type) {
+			return new LookupPlan(type);
+		}
+	};
+
+	/**
 	 * The class whose properties files are searched by {@link #getProperty(String, String)}
 	 * (then its super classes, up to BaseObject). The default is the class of this object.
 	 * 
@@ -415,12 +521,70 @@ public class BaseObject {
 	 * @see #getProperty(String)
 	 */
 	public String getProperty(String propertyName,String defaultValue) {
+		Class<?> start = getPropertyClass();
+		String ret;
+		if( start == getClass() ) {
+			ret = findProperty(lookupPlans.get(start), propertyName);
+		} else {
+			//  A subclass searches the files of another class (a LogHelper for a plugin class, say);
+			//  that class has no plan of its own for this object's class loader, so take the long way.
+			ret = findPropertyOf(start, propertyName);
+		}
+		return ret == null ? defaultValue : ret;
+	}
+
+	/**
+	 * {@link #getProperty(String, String)} for an object that searches its own class, which is nearly
+	 * always: the strings that depend only on the class come from its {@link LookupPlan}, so nothing
+	 * is built here unless the property prefix has been changed.
+	 */
+	private String findProperty(LookupPlan plan, String propertyName) {
+		String prefix = getPropertyPrefix();
+		String[] keys = plan.keys(propertyName);
+		String prefixed = null;
+		if( prefix != null ) {
+			prefixed = keys.length > 0 && prefix.equals(plan.defaultPrefix) ? keys[0] : prefix+"."+propertyName;
+		}
+
+		String ret = null;
+		if( prefixed != null ) {
+			ret = System.getProperty(prefixed);
+			//  The class name of each level is a prefix too, so a property set for a super class
+			//  (-Dcom.foo.Base.timeout=5) also applies to its sub classes.
+			for(int i = 0; ret == null && i < keys.length; i++) {
+				if( keys[i] != prefixed && !keys[i].equals(prefixed) ) {
+					ret = System.getProperty(keys[i]);
+				}
+			}
+		}
+		if( ret == null ) {
+			ret = System.getProperty(propertyName);
+		}
+		for(int i = 0; ret == null && i < keys.length; i++) {
+			Properties p = plan.entry(i);
+			if( p != MISSING ) {
+				if( prefixed != null ) {
+					ret = p.getProperty(prefixed);
+					if( ret == null && keys[i] != prefixed && !keys[i].equals(prefixed) ) {
+						//  the class whose file this is, even when this object is a sub class of it
+						ret = p.getProperty(keys[i]);
+					}
+				}
+				if( ret == null ) {
+					ret = p.getProperty(propertyName);
+				}
+			}
+		}
+		return ret;
+	}
+
+	/** The search for an object whose {@link #getPropertyClass()} is not its own class. */
+	private String findPropertyOf(Class<?> start, String propertyName) {
 		String ret = null;
 		
 		String prefix = getPropertyPrefix();
 		//  Built once, it is looked up in the system properties and in every class's properties file
 		String prefixed = prefix == null ? null : prefix+"."+propertyName;
-		Class<?> start = getPropertyClass();
 
 		if( prefixed!=null ) {
 			ret = System.getProperty(prefixed);
@@ -467,9 +631,6 @@ public class BaseObject {
 			}
 		}
 
-		if( ret == null ) {
-			ret = defaultValue;
-		}
 		return ret;
 	}
 
