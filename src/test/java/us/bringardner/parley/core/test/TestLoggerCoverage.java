@@ -19,19 +19,19 @@ import java.util.logging.Logger;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.Log4JLogger;
 
 /**
  * Covers the logger code paths the original tests did not reach: the ILogger Supplier
- * defaults, BjlLogger configuration (System.out / System.err / log file / per name level),
- * JulLogger lazy init and configuration, and the Log4JLogger fallback to BjlLogger.
+ * defaults, ParleyLogger configuration (System.out / System.err / log file / per name level),
+ * JulLogger lazy init and configuration, and the Log4JLogger fallback to ParleyLogger.
  */
 public class TestLoggerCoverage {
 
-	private static final String BJL_PREFIX = BjlLogger.class.getName()+".";
+	private static final String LOGGER_PREFIX = ParleyLogger.class.getName()+".";
 
 	@Test
 	public void testSupplierDefaults() {
@@ -57,15 +57,15 @@ public class TestLoggerCoverage {
 	@Test
 	public void testParseLevelAliases() {
 		for(String name : new String[] {"TRACE","ALL","FINE","FINER","FINEST"}) {
-			assertEquals(Level.DEBUG, BjlLogger.parseLevel(name, Level.ERROR), name);
+			assertEquals(Level.DEBUG, ParleyLogger.parseLevel(name, Level.ERROR), name);
 		}
-		assertEquals(Level.ERROR, BjlLogger.parseLevel("severe", Level.NONE));
-		assertEquals(Level.INFO, BjlLogger.parseLevel("   ", Level.INFO));
+		assertEquals(Level.ERROR, ParleyLogger.parseLevel("severe", Level.NONE));
+		assertEquals(Level.INFO, ParleyLogger.parseLevel("   ", Level.INFO));
 	}
 
 	@Test
-	public void testBjlLoggerNullLevelAndErrStream() {
-		BjlLogger logger = new BjlLogger();
+	public void testParleyLoggerNullLevelAndErrStream() {
+		ParleyLogger logger = new ParleyLogger();
 		logger.init(null);
 		logger.setLevel(null);
 		assertEquals(Level.NONE, logger.getLevel(), "A null level turns logging off");
@@ -91,33 +91,33 @@ public class TestLoggerCoverage {
 	}
 
 	@Test
-	public void testBjlLoggerLevelByName() {
+	public void testParleyLoggerLevelByName() {
 		System.setProperty("test.parley.named.LogLevel", "debug");
 		try {
-			BjlLogger logger = new BjlLogger();
+			ParleyLogger logger = new ParleyLogger();
 			logger.init("test.parley.named");
 			assertEquals(Level.DEBUG, logger.getLevel());
 
-			BjlLogger other = new BjlLogger();
+			ParleyLogger other = new ParleyLogger();
 			other.init("");
-			assertEquals(BjlLogger.DEFAULT_LEVEL, other.getLevel(), "An empty name uses the default level");
+			assertEquals(ParleyLogger.DEFAULT_LEVEL, other.getLevel(), "An empty name uses the default level");
 		} finally {
 			System.clearProperty("test.parley.named.LogLevel");
 		}
 	}
 
 	@Test
-	public void testBjlLoggerLogFileSystemStreams() {
-		String key = BJL_PREFIX+BjlLogger.PROPERTY_LOG_FILE;
+	public void testParleyLoggerLogFileSystemStreams() {
+		String key = LOGGER_PREFIX+ParleyLogger.PROPERTY_LOG_FILE;
 		try {
 			System.setProperty(key, "System.err");
-			BjlLogger toErr = new BjlLogger();
+			ParleyLogger toErr = new ParleyLogger();
 			toErr.init("test.parley.system.err");
 			assertSame(System.err, toErr.getOut());
 			assertSame(System.err, toErr.getErr());
 
 			System.setProperty(key, " System.out ");
-			BjlLogger toOut = new BjlLogger();
+			ParleyLogger toOut = new ParleyLogger();
 			toOut.setOut(new PrintStream(new ByteArrayOutputStream()));
 			toOut.init("test.parley.system.out");
 			assertSame(System.out, toOut.getOut(), "System.out resets any previous stream");
@@ -128,13 +128,13 @@ public class TestLoggerCoverage {
 	}
 
 	@Test
-	public void testBjlLoggerLogFileInNewDirectory() throws IOException {
+	public void testParleyLoggerLogFileInNewDirectory() throws IOException {
 		File dir = Files.createTempDirectory("parley-core-logs").toFile();
 		File file = new File(new File(dir, "sub"), "test.log");
-		String key = BJL_PREFIX+BjlLogger.PROPERTY_LOG_FILE;
+		String key = LOGGER_PREFIX+ParleyLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, file.getPath());
 		try {
-			BjlLogger logger = new BjlLogger();
+			ParleyLogger logger = new ParleyLogger();
 			logger.init("test.parley.newdir");
 			logger.error("written to a new directory");
 		} finally {
@@ -145,15 +145,15 @@ public class TestLoggerCoverage {
 	}
 
 	@Test
-	public void testBjlLoggerLogFileCanNotBeOpened() throws IOException {
+	public void testParleyLoggerLogFileCanNotBeOpened() throws IOException {
 		//  a directory can't be opened as a file, so the logger keeps using System.out
 		File dir = Files.createTempDirectory("parley-core-not-a-file").toFile();
-		String key = BJL_PREFIX+BjlLogger.PROPERTY_LOG_FILE;
+		String key = LOGGER_PREFIX+ParleyLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, dir.getAbsolutePath());
 		PrintStream err = System.err;
 		System.setErr(new PrintStream(new ByteArrayOutputStream()));
 		try {
-			BjlLogger logger = new BjlLogger();
+			ParleyLogger logger = new ParleyLogger();
 			logger.init("test.parley.bad.file");
 			assertSame(System.out, logger.getOut());
 		} finally {
@@ -207,9 +207,9 @@ public class TestLoggerCoverage {
 		}
 	}
 
-	/** Force a Log4JLogger to use its BjlLogger fallback (what happens when log4j is not on the class path). */
-	private static BjlLogger useFallback(Log4JLogger logger, PrintStream out) throws Exception {
-		BjlLogger fallback = new BjlLogger();
+	/** Force a Log4JLogger to use its ParleyLogger fallback (what happens when log4j is not on the class path). */
+	private static ParleyLogger useFallback(Log4JLogger logger, PrintStream out) throws Exception {
+		ParleyLogger fallback = new ParleyLogger();
 		fallback.init("test.log4j.fallback");
 		fallback.setOut(out);
 		Field field = Log4JLogger.class.getDeclaredField("fallback");
@@ -222,7 +222,7 @@ public class TestLoggerCoverage {
 	public void testLog4JLoggerFallback() throws Exception {
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 		Log4JLogger logger = new Log4JLogger();
-		BjlLogger fallback = useFallback(logger, new PrintStream(bytes, true));
+		ParleyLogger fallback = useFallback(logger, new PrintStream(bytes, true));
 
 		logger.init("test.log4j.fallback.renamed");
 		logger.setLevel(Level.DEBUG);

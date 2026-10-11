@@ -19,22 +19,22 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 
 /**
- * BjlLogger log files: rotation by size, stack traces written whole, and write errors reported.
+ * ParleyLogger log files: rotation by size, stack traces written whole, and write errors reported.
  */
-public class TestBjlLoggerFile {
+public class TestParleyLoggerFile {
 
-	private static final String PREFIX = "us.bringardner.parley.core.BjlLogger.";
+	private static final String PREFIX = "us.bringardner.parley.core.ParleyLogger.";
 
 	/** Create a logger with the given properties (cleared again afterwards). */
-	private static BjlLogger logger(String name, Map<String, String> props) {
+	private static ParleyLogger logger(String name, Map<String, String> props) {
 		for (Map.Entry<String, String> e : props.entrySet()) {
 			System.setProperty(PREFIX+e.getKey(), e.getValue());
 		}
 		try {
-			BjlLogger ret = new BjlLogger();
+			ParleyLogger ret = new ParleyLogger();
 			ret.init(name);
 			return ret;
 		} finally {
@@ -64,10 +64,10 @@ public class TestBjlLoggerFile {
 	public void testRotation() throws IOException {
 		File dir = Files.createTempDirectory("parley-rotate").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.rotate", props(
-				BjlLogger.PROPERTY_LOG_FILE, log.getPath(),
-				BjlLogger.PROPERTY_LOG_FILE_MAX_SIZE, "1K",
-				BjlLogger.PROPERTY_LOG_FILE_COUNT, "2"));
+		ParleyLogger logger = logger("test.rotate", props(
+				ParleyLogger.PROPERTY_LOG_FILE, log.getPath(),
+				ParleyLogger.PROPERTY_LOG_FILE_MAX_SIZE, "1K",
+				ParleyLogger.PROPERTY_LOG_FILE_COUNT, "2"));
 		for(int i=0; i < 200; i++ ) {
 			logger.error("message number "+i);
 		}
@@ -95,7 +95,7 @@ public class TestBjlLoggerFile {
 	public void testNoRotationByDefault() throws IOException {
 		File dir = Files.createTempDirectory("parley-norotate").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.norotate", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
+		ParleyLogger logger = logger("test.norotate", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
 		for(int i=0; i < 200; i++ ) {
 			logger.error("message number "+i);
 		}
@@ -110,10 +110,10 @@ public class TestBjlLoggerFile {
 		File dir = Files.createTempDirectory("parley-oversized").toFile();
 		File log = new File(dir, "app.log");
 		Files.write(log.toPath(), new byte[5000]);
-		BjlLogger logger = logger("test.oversized", props(
-				BjlLogger.PROPERTY_LOG_FILE, log.getPath(),
-				BjlLogger.PROPERTY_LOG_FILE_MAX_SIZE, "4KB",
-				BjlLogger.PROPERTY_LOG_FILE_COUNT, "0"));
+		ParleyLogger logger = logger("test.oversized", props(
+				ParleyLogger.PROPERTY_LOG_FILE, log.getPath(),
+				ParleyLogger.PROPERTY_LOG_FILE_MAX_SIZE, "4KB",
+				ParleyLogger.PROPERTY_LOG_FILE_COUNT, "0"));
 		logger.error("first");
 		//  With LogFileCount 0 no old file is kept
 		assertEquals(1, dir.list().length);
@@ -126,7 +126,7 @@ public class TestBjlLoggerFile {
 	public void testStackTracesStayWithTheirMessage() throws Exception {
 		File dir = Files.createTempDirectory("parley-traces").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.traces", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
+		ParleyLogger logger = logger("test.traces", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
 
 		int threads = 4, each = 50;
 		CountDownLatch start = new CountDownLatch(1);
@@ -174,7 +174,7 @@ public class TestBjlLoggerFile {
 		ByteArrayOutputStream captured = new ByteArrayOutputStream();
 		System.setErr(new PrintStream(captured, true));
 		try {
-			BjlLogger logger = logger("test.full", props(BjlLogger.PROPERTY_LOG_FILE, full.getPath()));
+			ParleyLogger logger = logger("test.full", props(ParleyLogger.PROPERTY_LOG_FILE, full.getPath()));
 			for(int i=0; i < 5; i++ ) {
 				logger.error("lost "+i);
 			}
@@ -187,7 +187,7 @@ public class TestBjlLoggerFile {
 		assertEquals(-1, text.indexOf("can't write to /dev/full", first+1), "Only once: "+text);
 	}
 
-	/** Longer than how often BjlLogger checks that its file hasn't been moved (1 second) */
+	/** Longer than how often ParleyLogger checks that its file hasn't been moved (1 second) */
 	private static void waitForFileCheck() throws InterruptedException {
 		Thread.sleep(1200);
 	}
@@ -204,7 +204,7 @@ public class TestBjlLoggerFile {
 	public void testMovedFileIsReplaced() throws Exception {
 		File dir = Files.createTempDirectory("parley-moved").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.moved", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
+		ParleyLogger logger = logger("test.moved", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");
 
 		//  What logrotate does by default: move the file, then create a new empty one
@@ -222,7 +222,7 @@ public class TestBjlLoggerFile {
 	public void testDeletedFileIsRecreated() throws Exception {
 		File dir = Files.createTempDirectory("parley-deleted").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.deleted", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
+		ParleyLogger logger = logger("test.deleted", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");
 
 		Files.delete(log.toPath());
@@ -237,10 +237,10 @@ public class TestBjlLoggerFile {
 	public void testTruncatedFileKeepsRotating() throws Exception {
 		File dir = Files.createTempDirectory("parley-truncated").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.truncated", props(
-				BjlLogger.PROPERTY_LOG_FILE, log.getPath(),
-				BjlLogger.PROPERTY_LOG_FILE_MAX_SIZE, "4K",
-				BjlLogger.PROPERTY_LOG_FILE_COUNT, "1"));
+		ParleyLogger logger = logger("test.truncated", props(
+				ParleyLogger.PROPERTY_LOG_FILE, log.getPath(),
+				ParleyLogger.PROPERTY_LOG_FILE_MAX_SIZE, "4K",
+				ParleyLogger.PROPERTY_LOG_FILE_COUNT, "1"));
 		for(int i=0; i < 50; i++ ) {
 			logger.error("filler "+i);
 		}
@@ -266,10 +266,10 @@ public class TestBjlLoggerFile {
 	public void testCloseLogFiles() throws Exception {
 		File dir = Files.createTempDirectory("parley-close").toFile();
 		File log = new File(dir, "app.log");
-		BjlLogger logger = logger("test.close", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
+		ParleyLogger logger = logger("test.close", props(ParleyLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");
 
-		BjlLogger.closeLogFiles();
+		ParleyLogger.closeLogFiles();
 		assertEquals(List.of("before"), messages(log), "Everything logged is in the file when it is closed");
 
 		//  Closed, so it can be moved away (Windows refuses while it is open)

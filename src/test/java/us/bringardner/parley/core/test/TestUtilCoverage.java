@@ -26,7 +26,7 @@ import javax.net.ServerSocketFactory;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.SecureBaseObject;
 import us.bringardner.parley.core.util.AbstractCoreServer;
@@ -245,10 +245,10 @@ public class TestUtilCoverage {
 
 	@Test
 	public void testClassLoaderSingleClassFile() throws IOException {
-		File cls = testFile("TestFiles/us/bringardner/parley/core/BjlLogger.class");
+		File cls = testFile("TestFiles/us/bringardner/parley/core/ParleyLogger.class");
 		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(cls.getPath()))) {
 			List<Class<?>> list = loader.findTarget(BaseObject.class);
-			assertEquals(Arrays.asList(BjlLogger.class), list);
+			assertEquals(Arrays.asList(ParleyLogger.class), list);
 		}
 	}
 
@@ -257,7 +257,7 @@ public class TestUtilCoverage {
 		File jar = testFile("TestFiles/TestSearchableClassLoader.jar");
 		try(SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(jar.getPath()))) {
 			List<Class<?>> list = loader.findTarget(ILogger.class);
-			assertTrue(list.contains(BjlLogger.class), "Classes that implement the interface directly match");
+			assertTrue(list.contains(ParleyLogger.class), "Classes that implement the interface directly match");
 			assertFalse(list.contains(BaseObject.class));
 		}
 	}

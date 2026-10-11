@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.BaseThread;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.JulLogger;
@@ -41,22 +41,22 @@ public class TestReliability {
 
 	@Test
 	public void testDefaultLoggerLogsErrors() {
-		BjlLogger logger = new BjlLogger();
+		ParleyLogger logger = new ParleyLogger();
 		logger.init("test.default.level");
-		assertEquals(BjlLogger.DEFAULT_LEVEL, logger.getLevel());
+		assertEquals(ParleyLogger.DEFAULT_LEVEL, logger.getLevel());
 		assertTrue(logger.isErrorEnabled(), "Errors must be logged by default");
 		assertFalse(logger.isDebugEnabled());
 	}
 
 	@Test
 	public void testParseLevel() {
-		assertEquals(Level.DEBUG, BjlLogger.parseLevel("debug", Level.ERROR));
-		assertEquals(Level.WARN, BjlLogger.parseLevel(" Warning ", Level.ERROR));
-		assertEquals(Level.ERROR, BjlLogger.parseLevel("FATAL", Level.NONE));
-		assertEquals(Level.NONE, BjlLogger.parseLevel("off", Level.ERROR));
+		assertEquals(Level.DEBUG, ParleyLogger.parseLevel("debug", Level.ERROR));
+		assertEquals(Level.WARN, ParleyLogger.parseLevel(" Warning ", Level.ERROR));
+		assertEquals(Level.ERROR, ParleyLogger.parseLevel("FATAL", Level.NONE));
+		assertEquals(Level.NONE, ParleyLogger.parseLevel("off", Level.ERROR));
 		//  An invalid value must not throw (that would break every BaseObject)
-		assertEquals(Level.INFO, BjlLogger.parseLevel("not-a-level", Level.INFO));
-		assertEquals(Level.INFO, BjlLogger.parseLevel(null, Level.INFO));
+		assertEquals(Level.INFO, ParleyLogger.parseLevel("not-a-level", Level.INFO));
+		assertEquals(Level.INFO, ParleyLogger.parseLevel(null, Level.INFO));
 	}
 
 	//  Test classes extend TestCoreBase (not BaseObject directly) so TestCore.testClassLoader, 
@@ -77,7 +77,7 @@ public class TestReliability {
 
 	@Test
 	public void testLazyMessageIsNotBuiltWhenDisabled() {
-		BjlLogger logger = new BjlLogger();
+		ParleyLogger logger = new ParleyLogger();
 		logger.init("test.lazy");
 		logger.setLevel(Level.ERROR);
 		AtomicInteger calls = new AtomicInteger();
@@ -103,12 +103,12 @@ public class TestReliability {
 		file.deleteOnExit();
 		Files.write(file.toPath(), "existing line\n".getBytes());
 
-		String key = "us.bringardner.parley.core.BjlLogger." + BjlLogger.PROPERTY_LOG_FILE;
+		String key = "us.bringardner.parley.core.ParleyLogger." + ParleyLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, file.getAbsolutePath());
 		try {
-			BjlLogger one = new BjlLogger();
+			ParleyLogger one = new ParleyLogger();
 			one.init("file.one");
-			BjlLogger two = new BjlLogger();
+			ParleyLogger two = new ParleyLogger();
 			two.init("file.two");
 			assertSame(one.getOut(), two.getOut(), "Loggers writing to the same file should share one stream");
 			one.error("from one");

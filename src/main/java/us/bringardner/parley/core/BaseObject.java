@@ -414,7 +414,7 @@ public class BaseObject {
 	 * 
 	 * 1)  The System.property for "ILogger" is defined, that class is used.
 	 * 2)  If the log4j2 API (org.apache.logging.log4j) is in the class path, Log4JLogger is used.
-	 * 3)  The default is BjlLogger.
+	 * 3)  The default is ParleyLogger.
 	 * 
 	 * @return the Class used to create ILoggers
 	 */
@@ -437,7 +437,7 @@ public class BaseObject {
 					}
 					if( loggerClass == null ) 	{						
 						//  Only with a log4j implementation, the log4j API alone would ignore our LogLevel and LogFile settings
-						loggerClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : BjlLogger.class;
+						loggerClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : ParleyLogger.class;
 					}
 				}
 			}

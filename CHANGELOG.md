@@ -14,8 +14,9 @@ BjlCore is now **parley-core**, part of the Parley library family. It continues 
   `DateAndTimeDialog`, `DateTimeCombo`, `ICalendarDialog`) moved to a separate library outside
   Parley, `us.bringardner:bringardner-swing-widgets`, package `us.bringardner.swing.datetime`. parley-core
   no longer uses Swing or AWT.
+- `BjlLogger` is now `ParleyLogger`.
 - Property names that start with a class name change with the package, for example
-  `us.bringardner.core.BjlLogger.LogLevel` is now `us.bringardner.parley.core.BjlLogger.LogLevel`
+  `us.bringardner.core.BjlLogger.LogLevel` is now `us.bringardner.parley.core.ParleyLogger.LogLevel`
   and `us.bringardner.core.virtualThreads` is now `us.bringardner.parley.core.virtualThreads`.
 
 

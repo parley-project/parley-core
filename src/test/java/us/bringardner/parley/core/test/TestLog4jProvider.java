@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.Log4JLogger;
 
 /**
@@ -51,7 +51,7 @@ public class TestLog4jProvider {
 	}
 
 	@Test
-	public void testApiOnlyClassPathUsesBjlLogger() throws Exception {
+	public void testApiOnlyClassPathUsesParleyLogger() throws Exception {
 		File coreClasses = new File(BaseObject.class.getProtectionDomain().getCodeSource().getLocation().toURI());
 		File testClasses = new File(PrintDefaultLogger.class.getProtectionDomain().getCodeSource().getLocation().toURI());
 		File api = new File(jarOf("org.apache.logging.log4j.spi.Provider").toURI());
@@ -65,7 +65,7 @@ public class TestLog4jProvider {
 		assertTrue(p.waitFor(60, TimeUnit.SECONDS), "The JVM did not finish");
 		assertEquals(0, p.exitValue(), out);
 
-		assertTrue(out.contains("LOGGER="+BjlLogger.class.getName()), "Expected BjlLogger, got: "+out);
+		assertTrue(out.contains("LOGGER="+ParleyLogger.class.getName()), "Expected ParleyLogger, got: "+out);
 		assertFalse(out.contains("could not find a logging provider"), "log4j should not have been initialized: "+out);
 	}
 }

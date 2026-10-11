@@ -15,7 +15,7 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.BjlLogger;
+import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.ILogger.Level;
 import us.bringardner.parley.core.Log4JLogger;
@@ -164,7 +164,7 @@ public class TestBaseObjectCoverage {
 		field.setAccessible(true);
 		Object original = field.get(null);
 		String originalProperty = System.getProperty(BaseObject.PROPERTY_LOGGER);
-		Class<?> defaultClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : BjlLogger.class;
+		Class<?> defaultClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : ParleyLogger.class;
 		try {
 			//  a valid ILogger implementation
 			field.set(null, null);
