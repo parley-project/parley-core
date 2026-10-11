@@ -62,17 +62,14 @@ public final class AddressMatcher {
 		}
 		List<byte[]> nets = new ArrayList<byte[]>();
 		List<Integer> prefixes = new ArrayList<Integer>();
-		for(String item : list.trim().split("[,\\s]+")) {
-			if( item.isEmpty() ) {
-				continue;
-			}
+		for(String item : items(list.trim())) {
 			String addr = item;
 			int prefix = -1;
 			int slash = item.indexOf('/');
 			if( slash >= 0 ) {
 				addr = item.substring(0, slash);
 				String p = item.substring(slash+1);
-				if( !p.matches("[0-9]{1,3}") ) {
+				if( !isDigits(p, 0, p.length(), 3) ) {
 					throw new IllegalArgumentException("Invalid prefix length in '"+item+"'");
 				}
 				prefix = Integer.parseInt(p);
@@ -107,19 +104,14 @@ public final class AddressMatcher {
 	 * InetAddress only gets strings with a ':', which can't be host names.
 	 */
 	private static byte [] toBytes(String addr) {
-		if( addr.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}") ) {
-			String [] parts = addr.split("\\.");
-			byte [] ret = new byte[4];
-			for(int i=0; i < 4; i++ ) {
-				int v = Integer.parseInt(parts[i]);
-				if( v > 255 ) {
-					return null;
-				}
-				ret[i] = (byte) v;
-			}
-			return ret;
+		byte [] v4 = ipv4(addr);
+		if( v4 != null ) {
+			return v4;
 		}
-		if( addr.indexOf(':') >= 0 && addr.matches("[0-9A-Fa-f:.]+") ) {
+		if( isIpv4Shape(addr) ) {
+			return null;	//  four numbers, one more than 255
+		}
+		if( addr.indexOf(':') >= 0 && isAddressChars(addr) ) {
 			try {
 				return InetAddress.getByName(addr).getAddress();
 			} catch(UnknownHostException e) {
@@ -127,6 +119,97 @@ public final class AddressMatcher {
 			}
 		}
 		return null;
+	}
+
+	//  The list is parsed with plain loops rather than String.matches / split: those compile a regular
+	//  expression for every call, which was most of the time spent in parse.
+
+	/** @return the entries of a list separated by commas and white space (ASCII, like the regex \\s) */
+	private static List<String> items(String list) {
+		List<String> ret = new ArrayList<String>();
+		int start = -1;
+		int n = list.length();
+		for(int i = 0; i <= n; i++) {
+			boolean sep = i == n || list.charAt(i) == ',' || isSpace(list.charAt(i));
+			if( sep ) {
+				if( start >= 0 ) {
+					ret.add(list.substring(start, i));
+					start = -1;
+				}
+			} else if( start < 0 ) {
+				start = i;
+			}
+		}
+		return ret;
+	}
+
+	private static boolean isSpace(char c) {
+		return c == ' ' || c == '\t' || c == '\n' || c == '\u000B' || c == '\f' || c == '\r';
+	}
+
+	/** @return true if s[from, to) is 1 to max ASCII digits */
+	private static boolean isDigits(String s, int from, int to, int max) {
+		int n = to - from;
+		if( n < 1 || n > max ) {
+			return false;
+		}
+		for(int i = from; i < to; i++) {
+			char c = s.charAt(i);
+			if( c < '0' || c > '9' ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** @return true for exactly four dot separated numbers of 1 to 3 digits (they may be over 255) */
+	private static boolean isIpv4Shape(String s) {
+		int from = 0;
+		for(int part = 0; part < 4; part++) {
+			int dot = part < 3 ? s.indexOf('.', from) : s.length();
+			if( dot < 0 || !isDigits(s, from, dot, 3) ) {
+				return false;
+			}
+			from = dot + 1;
+		}
+		return true;
+	}
+
+	/** @return the four bytes of a dotted address, or null if it isn't one or has a number over 255 */
+	private static byte [] ipv4(String s) {
+		if( !isIpv4Shape(s) ) {
+			return null;
+		}
+		byte [] ret = new byte[4];
+		int from = 0;
+		for(int part = 0; part < 4; part++) {
+			int dot = part < 3 ? s.indexOf('.', from) : s.length();
+			int v = 0;
+			for(int i = from; i < dot; i++) {
+				v = v*10 + (s.charAt(i) - '0');
+			}
+			if( v > 255 ) {
+				return null;
+			}
+			ret[part] = (byte) v;
+			from = dot + 1;
+		}
+		return ret;
+	}
+
+	/** @return true if every character is a hex digit, ':' or '.' (and there is at least one) */
+	private static boolean isAddressChars(String s) {
+		if( s.isEmpty() ) {
+			return false;
+		}
+		for(int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			boolean ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') || c == ':' || c == '.';
+			if( !ok ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
