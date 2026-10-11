@@ -2,8 +2,8 @@
 
 ## parley-core 1.0.0 (unreleased)
 
-BjlCore is now **parley-core**, part of the Parley library family. The code is the same as
-BjlCore 1.3.1 (below); only names changed.
+BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
+(see [BjlCore history](#bjlcore-history)); the changes since then are below, with the renames first.
 
 ### Changed (needs a code change)
 
@@ -18,7 +18,6 @@ BjlCore 1.3.1 (below); only names changed.
   `us.bringardner.core.BjlLogger.LogLevel` is now `us.bringardner.parley.core.BjlLogger.LogLevel`
   and `us.bringardner.core.virtualThreads` is now `us.bringardner.parley.core.virtualThreads`.
 
-## 1.3.1 (unreleased)
 
 ### Fixed
 
@@ -40,28 +39,22 @@ BjlCore 1.3.1 (below); only names changed.
   for again, so setting it later (as a system property, say) has no effect on that object. Call
   `setKeyStorePassword` / `setKeyStoreFileName`; setting null looks the property up again.
 
-### Removed
-
-- `us.bringardner.core.swing.ComponentId`, and `getComponentName()` / `getComponentId()` on `Clock`,
-  `DatePanel`, `DayPanel` and `TimePanel`. It only gave the Swing components a fixed name and number for
-  tests, and nothing else used it; tests find components by `Component.getName()`, which the components
-  have set since 1.2.0 (for example `hourSpinner`, `todayButton`, `day1`). Strictly an incompatible change,
-  made in a patch release because no BJL project uses it: code that called these methods should use
-  `getClass()` or `getName()` instead.
-
 ### Added
 
 - `TlsSockets.configureClient(SSLEngine, host, verifyHostname)` and
   `TlsSockets.clientEngine(ctx, host, port, verifyHostname)`: the same client settings (SNI, host
-  name check) for non-blocking connections that use an SSLEngine instead of an SSLSocket, used by
-  bjl_net_framework's NIO framework.
+  name check) for non-blocking connections that use an SSLEngine instead of an SSLSocket, used by the
+  Parley NIO framework.
 - `util.Hex`: hex encoding (lower or upper case, optional separator such as `:` for fingerprints)
   and decoding. `java.util.HexFormat` needs Java 17; this replaces `String.format("%02x")` loops in
-  bjl_dns, bjl_email, bjl_file_system_sftp and bjl_net_framework.
+  the DNS, mail, SFTP and NIO framework code.
 - `NamedThreadFactory`: named daemon threads for executors (`name`, `name-2` ..., or
   `NamedThreadFactory.numbered("prefix")` for `prefix1`, `prefix2` ...), optionally non-daemon or
-  virtual (Java 21+). Replaces the hand-written thread factories in bjl_dns, bjl_email and bjl_net_framework.
+  virtual (Java 21+). Replaces hand-written thread factories in the DNS, mail and NIO framework code.
 
+## BjlCore history
+
+Releases made before the library became parley-core, as `us.bringardner:bjl_core` (BjlCore).
 
 ## 1.3.0
 

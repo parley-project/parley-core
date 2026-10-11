@@ -99,7 +99,7 @@ public class TestReliability {
 
 	@Test
 	public void testLogFileIsSharedAndAppended() throws IOException {
-		File file = File.createTempFile("bjlcore", ".log");
+		File file = File.createTempFile("parley-core", ".log");
 		file.deleteOnExit();
 		Files.write(file.toPath(), "existing line\n".getBytes());
 
@@ -289,7 +289,7 @@ public class TestReliability {
 
 	@Test
 	public void testClassLoaderPathWithSpaces() throws IOException {
-		File dir = Files.createTempDirectory("bjl core with spaces").toFile();
+		File dir = Files.createTempDirectory("parley core with spaces").toFile();
 		File jar = new File(dir, "test jar.jar");
 		Files.copy(new File("TestFiles/TestSearchableClassLoader.jar").toPath(), jar.toPath());
 		try (SearchableClassLoader loader = SearchableClassLoader.getLoader(Arrays.asList(jar.getAbsolutePath()))) {

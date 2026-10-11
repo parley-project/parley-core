@@ -125,7 +125,7 @@ public class TestTlsHostname {
 
 	@BeforeAll
 	public static void setUp() throws Exception {
-		dir = Files.createTempDirectory("bjl-tls").toFile();
+		dir = Files.createTempDirectory("parley-tls").toFile();
 		localhostServer = start(createKeyStore("localhost.p12", "CN=localhost", "dns:localhost,ip:127.0.0.1"));
 		otherNameServer = start(createKeyStore("other.p12", "CN=bringardner.us", null));
 	}

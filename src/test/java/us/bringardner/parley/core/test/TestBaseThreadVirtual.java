@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.core.BaseThread;
 
 /**
- * BJL-6: the virtual thread setting and the createThread hook. Surefire runs these against
+ * The virtual thread setting and the createThread hook. Surefire runs these against
  * target/classes, i.e. the Java 11 classes, on any JDK; BaseThreadVirtualIT tests the jar
  * (and so the Java 21 classes on JDK 21+).
  */

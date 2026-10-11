@@ -63,8 +63,7 @@ public class SecureBaseObject extends BaseObject {
 	public static final String PROTOCOL_TLS = "TLS";	
 	/**
 	 * System property that forces a TLS version (for example TLSv1.2) because some clients
-	 * don't support TLSv1.3. bjl_core doesn't read it; bjl_net_framework and BjlNetFtp do.
-	 * Removed in 1.1.0 and restored in 1.2.0 because they still use it (BJL-53).
+	 * don't support TLSv1.3. parley-core doesn't read it; the Parley protocol libraries do.
 	 */
 	public static final String PROPERTY_FORCE_TLS_VERSION = "ForceTlsVersion";
 
@@ -129,9 +128,9 @@ public class SecureBaseObject extends BaseObject {
 	private volatile SSLContext sslContext;
 
 	/**
-	 * Used to read the configuration eagerly. Since 1.1.0 every setting is read the first
+	 * Used to read the configuration eagerly. Every setting is read the first
 	 * time it's used, so this does nothing; it's here so subclasses that override it and call
-	 * super.init() still compile (restored in 1.2.0, BJL-53).
+	 * super.init() still compile (kept for compatibility).
 	 * 
 	 * @deprecated nothing needs to call it; settings are read when first used.
 	 */

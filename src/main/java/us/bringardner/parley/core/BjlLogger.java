@@ -68,7 +68,7 @@ public class BjlLogger extends BaseObject implements ILogger {
 
 	/**
 	 * @deprecated no longer used for formatting log entries (it serialized all logging threads).
-	 * Removed in 1.1.0 and restored in 1.2.0 for compatibility (BJL-53).
+	 * Kept for compatibility.
 	 */
 	@Deprecated
 	public static final us.bringardner.parley.core.util.ThreadSafeDateFormat format = new us.bringardner.parley.core.util.ThreadSafeDateFormat("MM-dd-yyyy HH:mm:ss.SSS");

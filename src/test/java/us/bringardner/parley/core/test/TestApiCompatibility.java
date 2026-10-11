@@ -14,8 +14,8 @@ import us.bringardner.parley.core.BjlLogger;
 import us.bringardner.parley.core.SecureBaseObject;
 
 /**
- * BJL-53: public API that bjl_core 1.0.0 had, 1.1.0 removed and other BJL projects still use
- * (bjl_net_framework, BjlNetFtp, BjlFileSystem, BjlFileSystemViewer, BjlNetworkCore).
+ * Public API that BjlCore (parley-core's predecessor) had and that the libraries built on
+ * parley-core still use.
  * This class compiling is most of the test.
  */
 @SuppressWarnings("deprecation")
@@ -26,7 +26,7 @@ public class TestApiCompatibility {
 		assertEquals("ForceTlsVersion", SecureBaseObject.PROPERTY_FORCE_TLS_VERSION);
 	}
 
-	/** Like BjlNetworkCore's ProxyServer: overrides init() and calls super.init(). */
+	/** Like a protocol server in another project: overrides init() and calls super.init(). */
 	static class InitOverride extends SecureBaseObject {
 		boolean called;
 

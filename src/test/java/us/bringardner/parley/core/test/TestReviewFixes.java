@@ -220,7 +220,7 @@ public class TestReviewFixes {
 
 	@Test
 	public void testClassSearchSurvivesSymbolicLinkLoops() throws Exception {
-		Path dir = Files.createTempDirectory("bjl-loop");
+		Path dir = Files.createTempDirectory("parley-loop");
 		try {
 			Path sub = Files.createDirectories(dir.resolve("a/b"));
 			try {
