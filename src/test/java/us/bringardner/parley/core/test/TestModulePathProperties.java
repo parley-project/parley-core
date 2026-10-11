@@ -29,6 +29,13 @@ public class TestModulePathProperties {
 
 	private static String tool(String name) {
 		File f = new File(System.getProperty("java.home"), "bin"+File.separator+name);
+		if( !f.exists() ) {
+			// Windows tools are javac.exe, jar.exe and java.exe
+			File exe = new File(f.getPath()+".exe");
+			if( exe.exists() ) {
+				f = exe;
+			}
+		}
 		return f.getAbsolutePath();
 	}
 
