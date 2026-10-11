@@ -89,26 +89,141 @@ public class Mailer extends BaseObject {
 
 ## Properties
 
-`getProperty(name)` looks in these places, in order, and returns the first value it finds:
+`getProperty(name)` lets a class's author ship default values in the deployed code, lets a sub class
+change them, and lets whoever runs the program change them again without rebuilding anything.
+The layers, from weakest to strongest:
 
-1. The system property `<class name>.<name>`, e.g. `-Dcom.example.Mailer.SmtpHost=mail.example.com`
-2. The system property `<name>`, e.g. `-DSmtpHost=mail.example.com`
-3. A properties file on the class path named after the class, `/com/example/Mailer.properties`,
-   checking `<class name>.<name>` and then `<name>`. The files of each super class are checked
-   next, up to (not including) `BaseObject`. Inner classes use their outer class's file.
-4. The default value passed to `getProperty(name, default)`, or `null`
+1. **The default** passed in the call, `getProperty(name, default)`. `getProperty(name)` returns `null`.
+2. **A properties file** next to the class: `com/example/Mailer.properties` for `com.example.Mailer`.
+   A sub class's file wins over its super class's file.
+3. **A system property**, which wins over every file.
 
-So a property can be set for one class (`com.example.Mailer.SmtpHost`) or for everything (`SmtpHost`),
-and a sub class inherits its parents' properties files.
+### Search order
 
-- `getIntProperty(name, default)` and `getBooleanProperty(name, default)` convert the value.
-  An invalid number prints a warning to `System.err` and returns the default. Only `true` (in any case) is true.
-- `setSupportPrefixProperty(false)` turns off the `<class name>.` lookups for one object.
-  `setPropertyPrefix(...)` (protected) uses a different prefix.
-- Properties files are cached for each class loader (up to 1000 per loader by default, one per class
-  searched), so a plugin's files don't mix with those of a class with the same name elsewhere. Use
-  `BaseObject.setMaxProperties(n)` to change the limit (0 for none), and
-  `BaseObject.clearPropertyCache()` to re-read them.
+`getProperty(name)` returns the first value it finds, looking in this order:
+
+1. System property `<prefix>.<name>`. The prefix is the class name of the object (see
+   [Changing the prefix](#changing-the-prefix)). Then `<super class name>.<name>` for each super class,
+   up to (not including) `BaseObject`.
+2. System property `<name>`.
+3. For the object's class, then each super class up to (not including) `BaseObject`, the properties file
+   `/<package path>/<ClassName>.properties`, checking `<prefix>.<name>`, `<that class name>.<name>`
+   and then `<name>`. Inner and anonymous classes use their outer class's file.
+4. The default value, or `null`.
+
+Values are only the text found (`getProperty` does not trim or interpret it). An empty value
+(`SmtpHost=`) is a value, so it stops the search.
+
+### Example
+
+```java
+package com.example;
+
+public class Mailer extends BaseObject {
+
+    public void send(String to) {
+        String host = getProperty("SmtpHost", "localhost");
+        int port    = getIntProperty("SmtpPort", 25);
+        boolean tls = getBooleanProperty("UseTls", false);
+        ...
+    }
+}
+
+public class BulkMailer extends Mailer {
+}
+```
+
+`com/example/Mailer.properties`, in the jar, the defaults of the class's author:
+
+```properties
+SmtpHost = mail.example.com
+SmtpPort = 587
+UseTls   = true
+```
+
+`com/example/BulkMailer.properties`, in the jar or in the application that extends it:
+
+```properties
+SmtpHost = bulk.example.com
+```
+
+What each object sees:
+
+| Call | Setup | Result |
+|---|---|---|
+| `new Mailer().getProperty("SmtpHost")` | nothing else | `mail.example.com` (Mailer.properties) |
+| `new BulkMailer().getProperty("SmtpHost")` | nothing else | `bulk.example.com` (BulkMailer.properties wins over Mailer.properties) |
+| `new BulkMailer().getIntProperty("SmtpPort", 25)` | nothing else | `587` (BulkMailer has no file entry, Mailer.properties is next) |
+| `new Mailer().getProperty("Retries", "3")` | not defined anywhere | `3` (the default) |
+| `new Mailer().getProperty("SmtpHost")` | `-Dcom.example.Mailer.SmtpHost=relay` | `relay` (a system property beats the file) |
+| `new BulkMailer().getProperty("SmtpHost")` | `-Dcom.example.Mailer.SmtpHost=relay` | `relay` (a property for a super class also applies to its sub classes) |
+| `new BulkMailer().getProperty("SmtpHost")` | the line above, and `-Dcom.example.BulkMailer.SmtpHost=bulk-relay` | `bulk-relay` (the object's own class name is looked up first) |
+| any `BaseObject` | `-DSmtpHost=other` | `other` for every class that asks for `SmtpHost` |
+
+A properties file may also use the class name form, `com.example.Mailer.SmtpHost = ...`. It is looked up
+before the plain `SmtpHost`, so a file can hold a general value and a more specific one for its class.
+
+### Which form to use for a system property
+
+- `-Dcom.example.Mailer.SmtpHost=...` sets it for one class and its sub classes. Use this one.
+- `-DSmtpHost=...` sets it for **every** `BaseObject` that asks for that name, and it also beats a
+  class-specific value in a properties file. Use it for settings that really are global, and pick names
+  that won't collide with JVM properties such as `user.dir`.
+
+System properties are read on every call, so they can be changed while the program runs. Properties
+files are cached (see [Caching](#caching)).
+
+### Typed values
+
+- `getIntProperty(name, default)` trims and parses the value. A value that isn't a number prints a warning
+  to `System.err` and returns the default.
+- `getBooleanProperty(name, default)` is true only for `true` (any case, surrounding spaces ignored).
+  Any other value is false, the default is used when the property isn't defined.
+
+### Changing the prefix
+
+An object's prefix is its class name. In a sub class, `setPropertyPrefix(...)` (protected) uses a
+different one, which is how several instances of one class get different settings:
+
+```java
+public class Database extends BaseObject {
+
+    public Database(String name) {
+        setPropertyPrefix(name);            // "primary", "reports", ...
+    }
+
+    String url() {
+        return getProperty("Url");          // -Dprimary.Url=..., or "primary.Url = ..." in Database.properties
+    }
+}
+```
+
+`setSupportPrefixProperty(false)` turns off the prefixed lookups completely for one object (only
+`<name>` is used). `getPropertyClass()` (protected) names the class whose files are searched, the
+object's own class by default.
+
+### Where the files can be
+
+- **Class path** (the usual case). The file is found through the object's class, so an application can
+  replace a library's `com/example/Mailer.properties` by putting its own file with that name earlier on
+  the class path. The file is replaced as a whole, it is not merged with the one it hides, so the
+  replacement needs every value you want to keep.
+- **Module path** (Java modules). A file in a package of a named module is encapsulated. `BaseObject`
+  can't see it unless the module opens the package to `us.bringardner.parley.core`. A library in a named module
+  can instead put its defaults in `META-INF/parley/<fully qualified class name>.properties`, for example
+  `META-INF/parley/com.example.Mailer.properties`. That location is never encapsulated. It is also used on
+  the class path when no `/com/example/Mailer.properties` is found.
+  On the module path two modules can't contain the same package, so a file can't be replaced by one with
+  the same name, use system properties or the file of the extending class.
+
+### Caching
+
+- Properties files are cached for each class loader and module (up to 1000 per loader by default, one per
+  class searched, found or not), so a plugin's files don't mix with those of a class with the same name
+  elsewhere.
+- A file that wasn't found is cached too, so a file added later isn't seen until the cache is cleared.
+- `BaseObject.setMaxProperties(n)` changes the limit (0 for none), and
+  `BaseObject.clearPropertyCache()` makes every file be read again.
 
 ## Logging
 
