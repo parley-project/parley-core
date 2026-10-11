@@ -60,6 +60,9 @@ public class BaseObject {
 	//  Cached for a properties file that was looked for and not found. Never changed.
 	private static final Properties MISSING = new Properties();
 
+	//  Where a library in a named module can put its defaults (see getPropertyEntry). Not in a package, so not encapsulated.
+	private static final String META_INF_DIR = "/META-INF/parley/";
+
 	//  The properties files read through each class loader, by class name (MISSING when there is no file).
 	//  Kept per loader because the same class name can have a different file (or none) in another loader:
 	//  with one cache for every loader, the first loader searched decided the result for all of them.
@@ -204,9 +207,18 @@ public class BaseObject {
 	 * The objective is to allow each level, or 'name' to externals
 	 * values into property files that can be easily overridden at run time.
 	 * 
-	 * The file is looked for through this object's class loader first, then (if it isn't found
-	 * there) through the loader of cls. What was found (or not) is cached for each class loader,
-	 * so the files are not searched for every time a property is read.
+	 * The places searched, the first one that has the file wins:
+	 * <ol>
+	 * <li><code>/pkg/Name.properties</code> through this object's class. On the class path this lets an
+	 *     extending class replace the file of its super class.</li>
+	 * <li>The same file through cls, when cls is in another module or class loader than this object's class
+	 *     (a super class in another module, a LogHelper or getPropertyClass() for a plugin class).</li>
+	 * <li><code>/META-INF/parley/pkg.Name.properties</code> through cls. A resource in a package of a named
+	 *     module is encapsulated, and is not visible to BaseObject unless that module opens the package to it.
+	 *     A META-INF resource never is, so a library in a named module can put its defaults there.</li>
+	 * </ol>
+	 * What was found (or not) is cached for each class loader and module, so the files are not searched
+	 * for every time a property is read.
 	 *  
 	 * @param cls the class whose properties these are (used if this object's class can't see the file)
 	 * @param name
@@ -228,25 +240,35 @@ public class BaseObject {
 		 * In this case we want that behavior.  It allows a property file to be replaced or overwritten by the extending class. 
 		 */
 		Class<?> mine = getClass();
-		Properties ret = loadProperties(mine, name, fn);
-		if( ret == MISSING && cls != null && cls.getClassLoader() != mine.getClassLoader() ) {
-			//  The class being searched may be in a class loader this object's class can't see
-			//  (a LogHelper or getPropertyClass() for a plugin class, for example).
-			ret = loadProperties(cls, name, fn);
+		Properties ret = loadProperties(mine, fn);
+		if( ret == MISSING && cls != null && !sameSource(cls, mine) ) {
+			//  The class being searched may be in a module or class loader this object's class can't see
+			ret = loadProperties(cls, fn);
+		}
+		if( ret == MISSING && cls != null ) {
+			ret = loadProperties(cls, META_INF_DIR+name+".properties");
 		}
 		return ret;
 	}
 
+	private static boolean sameSource(Class<?> a, Class<?> b) {
+		return a == b || (a.getClassLoader() == b.getClassLoader() && a.getModule() == b.getModule());
+	}
+
 	/**
-	 * @param via the class whose loader is searched
-	 * @param name the cache key (a class name)
-	 * @param fn the resource name of the properties file
+	 * @param via the class whose module (or class loader) is searched
+	 * @param fn the resource name of the properties file, it is also the cache key
 	 * @return the file's Properties, from the cache of via's class loader if it has been read before,
-	 *  or {@link #MISSING} if the loader doesn't have it.
+	 *  or {@link #MISSING} if it isn't there.
 	 */
-	private static Properties loadProperties(Class<?> via, String name, String fn) {
+	private static Properties loadProperties(Class<?> via, String fn) {
+		//  A class in a named module only sees its own module, so the same resource name
+		//  can be found (or not) through two classes in the same class loader.
+		Module module = via.getModule();
+		String key = module.isNamed() ? module.getName()+":"+fn : fn;
+		String name = fn;
 		ConcurrentHashMap<String, Properties> cache = classCaches.get(via);
-		Properties ret = cache.get(name);
+		Properties ret = cache.get(key);
 		if( ret == null ) {
 			//  Load outside any lock so a slow class path search does not block every other thread.
 			//  If two threads load the same file at the same time, the last one wins (the content is the same).
@@ -262,7 +284,7 @@ public class BaseObject {
 				System.err.println("Error reading properties for "+name+" e=("+e+")");
 				e.printStackTrace(System.err);
 			}
-			cache.put(name, ret);
+			cache.put(key, ret);
 			if( cache.size() > maxProperties && maxProperties > 0 ) {
 				trimPropertyCache(cache);
 			}
@@ -284,6 +306,12 @@ public class BaseObject {
 	 *     their outer class.</li>
 	 * </ol>
 	 * Properties files are cached, see {@link #setMaxProperties(int)} and {@link #clearPropertyCache()}.
+	 * <p>
+	 * A class in a named module (module path) can't have its <code>/pkg/Name.properties</code> read unless the
+	 * module opens the package to this module, so the same file may instead be put in
+	 * <code>/META-INF/parley/pkg.Name.properties</code>. On the module path two modules can't contain the same
+	 * package, so a file can't be replaced by an extending class there: use system properties, or the file of
+	 * the extending class.
 	 *
 	 * @param propertyName Name of the property
 	 * @return the value of the property, or null if it is not defined.
