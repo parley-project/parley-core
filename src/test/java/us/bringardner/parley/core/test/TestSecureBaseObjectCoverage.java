@@ -55,7 +55,7 @@ public class TestSecureBaseObjectCoverage {
 	}
 
 	static File createEmptyKeyStore(String password) throws Exception {
-		File file = File.createTempFile("bjlcore-test", ".p12");
+		File file = File.createTempFile("parley-core-test", ".p12");
 		file.deleteOnExit();
 		KeyStore ks = KeyStore.getInstance("PKCS12");
 		ks.load(null, password.toCharArray());

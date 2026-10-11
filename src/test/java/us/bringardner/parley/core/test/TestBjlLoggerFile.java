@@ -62,7 +62,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testRotation() throws IOException {
-		File dir = Files.createTempDirectory("bjl-rotate").toFile();
+		File dir = Files.createTempDirectory("parley-rotate").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.rotate", props(
 				BjlLogger.PROPERTY_LOG_FILE, log.getPath(),
@@ -93,7 +93,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testNoRotationByDefault() throws IOException {
-		File dir = Files.createTempDirectory("bjl-norotate").toFile();
+		File dir = Files.createTempDirectory("parley-norotate").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.norotate", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
 		for(int i=0; i < 200; i++ ) {
@@ -107,7 +107,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testOversizedFileIsRotatedOnFirstWrite() throws IOException {
-		File dir = Files.createTempDirectory("bjl-oversized").toFile();
+		File dir = Files.createTempDirectory("parley-oversized").toFile();
 		File log = new File(dir, "app.log");
 		Files.write(log.toPath(), new byte[5000]);
 		BjlLogger logger = logger("test.oversized", props(
@@ -124,7 +124,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testStackTracesStayWithTheirMessage() throws Exception {
-		File dir = Files.createTempDirectory("bjl-traces").toFile();
+		File dir = Files.createTempDirectory("parley-traces").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.traces", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
 
@@ -202,7 +202,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testMovedFileIsReplaced() throws Exception {
-		File dir = Files.createTempDirectory("bjl-moved").toFile();
+		File dir = Files.createTempDirectory("parley-moved").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.moved", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");
@@ -220,7 +220,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testDeletedFileIsRecreated() throws Exception {
-		File dir = Files.createTempDirectory("bjl-deleted").toFile();
+		File dir = Files.createTempDirectory("parley-deleted").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.deleted", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");
@@ -235,7 +235,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testTruncatedFileKeepsRotating() throws Exception {
-		File dir = Files.createTempDirectory("bjl-truncated").toFile();
+		File dir = Files.createTempDirectory("parley-truncated").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.truncated", props(
 				BjlLogger.PROPERTY_LOG_FILE, log.getPath(),
@@ -264,7 +264,7 @@ public class TestBjlLoggerFile {
 
 	@Test
 	public void testCloseLogFiles() throws Exception {
-		File dir = Files.createTempDirectory("bjl-close").toFile();
+		File dir = Files.createTempDirectory("parley-close").toFile();
 		File log = new File(dir, "app.log");
 		BjlLogger logger = logger("test.close", props(BjlLogger.PROPERTY_LOG_FILE, log.getPath()));
 		logger.error("before");

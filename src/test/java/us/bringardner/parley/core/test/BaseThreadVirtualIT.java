@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.core.BaseThread;
 
 /**
- * BJL-6, run by failsafe in 'mvn verify' against the built multi-release jar: on JDK 21+
+ * Run by failsafe in 'mvn verify' against the built multi-release jar: on JDK 21+
  * the Java 21 classes in META-INF/versions/21 are used and BaseThread can run on a virtual
  * thread; on older JDKs everything stays a platform thread.
  */
@@ -59,7 +59,7 @@ public class BaseThreadVirtualIT {
 		assertEquals(feature >= 21, BaseThread.isVirtualSupported());
 		assertEquals(feature >= 24, BaseThread.isVirtualRecommended());
 		if (System.getProperty(BaseThread.VIRTUAL_THREADS_PROPERTY) == null) {
-			assertFalse(BaseThread.isVirtualDefault(), "upgrading bjl_core changes nothing by default");
+			assertFalse(BaseThread.isVirtualDefault(), "nothing changes by default");
 			assertFalse(new Worker().isVirtual());
 		}
 	}

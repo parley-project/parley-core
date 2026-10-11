@@ -1,7 +1,7 @@
 package us.bringardner.parley.core;
 
 /**
- * Creates the threads {@link BaseThread} runs on (BJL-6).
+ * Creates the threads {@link BaseThread} runs on.
  * <p>
  * This is the Java 21 version, packaged in META-INF/versions/21 of the multi-release jar and
  * used only by Java 21+ JVMs; Java 11-20 use src/main/java/us/bringardner/parley/core/Threads.java.

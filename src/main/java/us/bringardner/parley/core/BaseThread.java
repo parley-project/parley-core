@@ -43,7 +43,7 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	private volatile int priority = -1;
 
 	/**
-	 * @deprecated not used by BaseThread; restored in 1.2.0 for compatibility (BJL-53).
+	 * @deprecated not used by BaseThread; kept for compatibility.
 	 */
 	@Deprecated
 	public static final int DEFAULT_ERROR_SLEEP_TIME = 60000;
@@ -56,7 +56,7 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 
 	/**
 	 * System property for the default of {@link #setVirtual(Boolean)}: "false" (the default,
-	 * so upgrading bjl_core changes nothing), "true", or "auto" (virtual threads on Java 24
+	 * so nothing changes unless you ask for it), "true", or "auto" (virtual threads on Java 24
 	 * and later), see {@link #isVirtualDefault()}.
 	 */
 	public static final String VIRTUAL_THREADS_PROPERTY = "us.bringardner.parley.core.virtualThreads";
@@ -320,8 +320,8 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	/**
 	 * @return the time (milliseconds) a subclass may sleep after an error. BaseThread itself
 	 * doesn't use it.
-	 * @deprecated not used by BaseThread; removed in 1.1.0 and restored in 1.2.0 for
-	 * compatibility (BJL-53). Subclasses that need it should keep their own setting.
+	 * @deprecated not used by BaseThread; kept for compatibility. Subclasses that need it
+	 * should keep their own setting.
 	 */
 	@Deprecated
 	public int getErrorSleepTime() {
@@ -340,8 +340,8 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	/**
 	 * @return true if a subclass should stop when it hits an error. BaseThread itself
 	 * doesn't use it.
-	 * @deprecated not used by BaseThread; removed in 1.1.0 and restored in 1.2.0 for
-	 * compatibility (BJL-53). Subclasses that need it should keep their own setting.
+	 * @deprecated not used by BaseThread; kept for compatibility. Subclasses that need it
+	 * should keep their own setting.
 	 */
 	@Deprecated
 	public boolean isStopOnError() {
@@ -384,7 +384,7 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 			}
 			
 			// A virtual thread is always a daemon (setDaemon(false) would throw) and its
-			// priority can't be changed (BJL-6)
+			// priority can't be changed
 			if( !Threads.isVirtual(thread) ) {
 				thread.setDaemon(isDaemon());
 				int priority = getPriority();
