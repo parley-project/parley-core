@@ -214,10 +214,36 @@ public final class PrivateKeys {
 		try {
 			Files.createFile(file.toPath(), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
 		} catch (UnsupportedOperationException e) {
-			// Not POSIX (Windows): the file inherits its folder's access
+			// Not POSIX (Windows): created, then its ACL is cut down to its owner before the key goes
+			// in, as OpenSSH for Windows requires. (It would inherit its folder's access otherwise.)
 			Files.createFile(file.toPath());
+			restrictToOwner(file.toPath());
 		}
 		Files.write(file.toPath(), data);
+	}
+
+	/**
+	 * Replace the file's ACL with one entry: its owner, with every permission. A file system
+	 * without ACLs (it answers no view) is left alone.
+	 */
+	private static void restrictToOwner(java.nio.file.Path path) throws IOException {
+		java.nio.file.attribute.AclFileAttributeView view =
+				Files.getFileAttributeView(path, java.nio.file.attribute.AclFileAttributeView.class);
+		if( view == null ) {
+			return;
+		}
+		try {
+			java.nio.file.attribute.AclEntry entry = java.nio.file.attribute.AclEntry.newBuilder()
+					.setType(java.nio.file.attribute.AclEntryType.ALLOW)
+					.setPrincipal(Files.getOwner(path))
+					.setPermissions(java.util.EnumSet.allOf(java.nio.file.attribute.AclEntryPermission.class))
+					.build();
+			view.setAcl(java.util.Collections.singletonList(entry));
+		} catch (IOException | RuntimeException e) {
+			//  Fail closed: a private key is not left readable by whoever its folder allows
+			Files.deleteIfExists(path);
+			throw new IOException("Can't make "+path+" readable by its owner only: "+e, e);
+		}
 	}
 
 	/**
