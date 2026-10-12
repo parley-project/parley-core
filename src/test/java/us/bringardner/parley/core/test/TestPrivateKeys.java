@@ -79,6 +79,15 @@ public class TestPrivateKeys {
 		assertSame(kp, PrivateKeys.load(f, null));
 		if( f.toPath().getFileSystem().supportedFileAttributeViews().contains("posix") ) {
 			assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(f.toPath())));
+		} else {
+			//  Windows: the ACL has the owner and nobody else
+			java.nio.file.attribute.AclFileAttributeView acl =
+					Files.getFileAttributeView(f.toPath(), java.nio.file.attribute.AclFileAttributeView.class);
+			if( acl != null ) {
+				List<java.nio.file.attribute.AclEntry> entries = acl.getAcl();
+				assertEquals(1, entries.size(), "only the owner may have access: " + entries);
+				assertEquals(Files.getOwner(f.toPath()), entries.get(0).principal());
+			}
 		}
 		assertThrows(java.nio.file.FileAlreadyExistsException.class, () -> PrivateKeys.writePrivateFile(f, "x"));
 	}
