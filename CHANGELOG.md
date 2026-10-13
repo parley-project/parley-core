@@ -4,6 +4,12 @@
 
 ### Added
 
+- `Ec`: elliptic curve helpers shared by parley-ssh and parley-dns: the on-curve check for points
+  from outside (`checkOnCurve`), SEC1 uncompressed and raw x||y point encodings (decoding checks the
+  point), and ECDSA signatures between the JDK's DER form, (r, s) and r||s (DNSSEC), with strict,
+  bounds-checked DER parsing.
+- `PrivateKeys.exposure(File)`: says whether a private key file can be read by its group or by
+  everyone.
 - Limits per client for every server: `MaxConnectionsPerClient` (`tryAcquireClient` /
   `releaseClient`, and `tryAcquireConnection(InetAddress)` / `releaseConnection(InetAddress)` for both
   limits at once) so one host can't take every place under `MaxConnections`, and `AllowedClients`

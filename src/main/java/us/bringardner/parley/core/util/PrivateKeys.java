@@ -223,6 +223,28 @@ public final class PrivateKeys {
 	}
 
 	/**
+	 * Check a private key file before using it: a key others can read may already be in
+	 * other hands (OpenSSH refuses such keys; a server should at least say so).
+	 *
+	 * @return what is wrong ("readable by everyone", "readable by its group"), or null if
+	 *  only its owner can read it, or the file system has no POSIX permissions
+	 */
+	public static String exposure(File file) {
+		try {
+			java.util.Set<java.nio.file.attribute.PosixFilePermission> p = Files.getPosixFilePermissions(file.toPath());
+			if( p.contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ) ) {
+				return "readable by everyone";
+			}
+			if( p.contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ) ) {
+				return "readable by its group";
+			}
+			return null;
+		} catch (UnsupportedOperationException | IOException e) {
+			return null;
+		}
+	}
+
+	/**
 	 * Replace the file's ACL with one entry: its owner, with every permission. A file system
 	 * without ACLs (it answers no view) is left alone.
 	 */
