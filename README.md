@@ -336,6 +336,8 @@ server socket from these properties (or the matching setters):
 | `KeepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
 | `TcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
 | `MaxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
+| `MaxConnectionsPerClient` | `0` (no limit) | Connections one client address may have at once, so one host can't take every place (`tryAcquireClient(address)`, `tryAcquireConnection(address)`) |
+| `AllowedClients` | everyone | Client addresses and networks allowed to connect, e.g. `127.0.0.1 10.0.0.0/8 ::1` (`isClientAllowed(address)`) |
 | `LoginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
 | `MaxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
 | `LoginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |

@@ -96,6 +96,23 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	/** 0: no limit. */
 	public static final int DEFAULT_MAX_CONNECTIONS = 0;
 
+	/**
+	 * The most connections one client address may have open at once, so a single
+	 * host can't take every place under {@link #PROPERTY_MAX_CONNECTIONS}.
+	 * See {@link #DEFAULT_MAX_CONNECTIONS_PER_CLIENT}.
+	 */
+	public static final String PROPERTY_MAX_CONNECTIONS_PER_CLIENT = "MaxConnectionsPerClient";
+
+	/** 0: no limit per client. */
+	public static final int DEFAULT_MAX_CONNECTIONS_PER_CLIENT = 0;
+
+	/**
+	 * The client addresses and networks allowed to connect, an {@link AddressMatcher}
+	 * list such as {@code "127.0.0.1 10.0.0.0/8 ::1"}. Unset or empty: everyone.
+	 * Connections from other addresses are closed as soon as they are accepted.
+	 */
+	public static final String PROPERTY_ALLOWED_CLIENTS = "AllowedClients";
+
 	private volatile ServerSocketFactory factory;
 	
 	
@@ -128,6 +145,12 @@ public abstract class AbstractCoreServer extends BaseThread  {
 
 	private volatile int maxConnections = -1;
 	private final AtomicInteger activeConnections = new AtomicInteger();
+
+	private volatile int maxConnectionsPerClient = -1;
+	//  Connections open per client address (entries removed when they reach 0)
+	private final ConcurrentHashMap<InetAddress, AtomicInteger> perClient = new ConcurrentHashMap<InetAddress, AtomicInteger>();
+	//  null: the AllowedClients property has not been read yet
+	private volatile AddressMatcher allowedClients;
 
 	private volatile ServerSocket serverSocket;
 	
@@ -503,6 +526,133 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 */
 	public int getActiveConnections() {
 		return activeConnections.get();
+	}
+
+	// ------------------------------------------------------------------ per client
+
+	/**
+	 * @return the most connections one client address may have at once, 0 for no limit
+	 * (the {@value #PROPERTY_MAX_CONNECTIONS_PER_CLIENT} property)
+	 */
+	public int getMaxConnectionsPerClient() {
+		if( maxConnectionsPerClient < 0 ) {
+			synchronized(this) {
+				if( maxConnectionsPerClient < 0 ) {
+					maxConnectionsPerClient = Math.max(0, getIntProperty(PROPERTY_MAX_CONNECTIONS_PER_CLIENT, DEFAULT_MAX_CONNECTIONS_PER_CLIENT));
+				}
+			}
+		}
+		return maxConnectionsPerClient;
+	}
+
+	/**
+	 * @param value the most connections one client address may have at once, 0 for no limit.
+	 * Connections already open are not closed.
+	 */
+	public void setMaxConnectionsPerClient(int value) {
+		maxConnectionsPerClient = Math.max(value, 0);
+	}
+
+	/**
+	 * @return the client addresses allowed to connect ({@value #PROPERTY_ALLOWED_CLIENTS});
+	 *  an empty matcher means everyone
+	 */
+	public AddressMatcher getAllowedClients() {
+		AddressMatcher ret = allowedClients;
+		if( ret == null ) {
+			synchronized(this) {
+				if( allowedClients == null ) {
+					String tmp = getProperty(PROPERTY_ALLOWED_CLIENTS);
+					allowedClients = tmp == null || tmp.trim().isEmpty() ? AddressMatcher.NONE : AddressMatcher.parse(tmp);
+				}
+				ret = allowedClients;
+			}
+		}
+		return ret;
+	}
+
+	/**
+	 * @param list addresses and networks allowed to connect, e.g. "127.0.0.1 10.0.0.0/8";
+	 *  null or empty for everyone
+	 * @throws IllegalArgumentException if the list can't be parsed
+	 */
+	public void setAllowedClients(String list) {
+		allowedClients = list == null || list.trim().isEmpty() ? AddressMatcher.NONE : AddressMatcher.parse(list);
+	}
+
+	/**
+	 * @return true if a client at this address may connect: {@link #getAllowedClients()} is
+	 *  empty or matches it. A null address (not known) is allowed only when the list is empty.
+	 */
+	public boolean isClientAllowed(InetAddress client) {
+		AddressMatcher m = getAllowedClients();
+		if( m.isEmpty() ) {
+			return true;
+		}
+		return client != null && m.matches(client);
+	}
+
+	/**
+	 * Reserve a place for one more connection from this client address, under
+	 * {@link #getMaxConnectionsPerClient()}. Release it with {@link #releaseClient(InetAddress)}.
+	 * Servers that count all their connections themselves use this with their own limit;
+	 * {@link #tryAcquireConnection(InetAddress)} does both.
+	 *
+	 * @param client the client's address; null is not counted (always allowed)
+	 * @return false if this address already has the most connections it may have
+	 */
+	public boolean tryAcquireClient(InetAddress client) {
+		if( client == null ) {
+			return true;
+		}
+		int max = getMaxConnectionsPerClient();
+		boolean [] ok = {false};
+		perClient.compute(client, (k, n) -> {
+			if( n == null ) {
+				n = new AtomicInteger();
+			}
+			if( max <= 0 || n.get() < max ) {
+				n.incrementAndGet();
+				ok[0] = true;
+			}
+			return n.get() == 0 ? null : n;
+		});
+		return ok[0];
+	}
+
+	/** Give back a place reserved by {@link #tryAcquireClient(InetAddress)}. */
+	public void releaseClient(InetAddress client) {
+		if( client == null ) {
+			return;
+		}
+		perClient.computeIfPresent(client, (k, n) -> n.decrementAndGet() <= 0 ? null : n);
+	}
+
+	/** @return how many connections this client address has (as reserved by {@link #tryAcquireClient}) */
+	public int getClientConnections(InetAddress client) {
+		AtomicInteger n = client == null ? null : perClient.get(client);
+		return n == null ? 0 : n.get();
+	}
+
+	/**
+	 * {@link #tryAcquireConnection()} and {@link #tryAcquireClient(InetAddress)} together:
+	 * a place under both limits, or neither. Release it with {@link #releaseConnection(InetAddress)}.
+	 */
+	public boolean tryAcquireConnection(InetAddress client) {
+		if( !tryAcquireClient(client) ) {
+			return false;
+		}
+		if( !tryAcquireConnection() ) {
+			releaseClient(client);
+			return false;
+		}
+		return true;
+	}
+
+	/** Give back a place reserved by {@link #tryAcquireConnection(InetAddress)}. */
+	public void releaseConnection(InetAddress client) {
+		releaseConnection();
+		releaseClient(client);
 	}
 
 	
