@@ -4,6 +4,8 @@
 
 ### Added
 
+- `Base32Hex` (RFC 4648 base32 with the extended hex alphabet) and `RenamedProperty` (read a renamed
+  system property, warning once about the old name), moved from parley-dns.
 - `Ec`: elliptic curve helpers shared by parley-ssh and parley-dns: the on-curve check for points
   from outside (`checkOnCurve`), SEC1 uncompressed and raw x||y point encodings (decoding checks the
   point), and ECDSA signatures between the JDK's DER form, (r, s) and r||s (DNSSEC), with strict,
