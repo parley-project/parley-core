@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Limits per client for every server: `MaxConnectionsPerClient` (`tryAcquireClient` /
+  `releaseClient`, and `tryAcquireConnection(InetAddress)` / `releaseConnection(InetAddress)` for both
+  limits at once) so one host can't take every place under `MaxConnections`, and `AllowedClients`
+  (`isClientAllowed`), an `AddressMatcher` list of the client addresses allowed to connect. Both
+  default to no limit, so nothing changes unless they are set. Servers built on parley-net use them.
+
 ## parley-core 1.0.0 (2026-10-10)
 
 BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
