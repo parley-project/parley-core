@@ -85,6 +85,9 @@ public class Mailer extends BaseObject {
 | | `AddressMatcher` | A list of IP addresses and CIDR networks, for allow lists. Never does a DNS lookup. |
 | | `PrivateKeys`, `Pem`, `Der` | Load RSA and EC private keys from PEM files and key stores. |
 | | `Hex` | Hex encoding and decoding. |
+| | `Base32Hex` | Base32 with the extended hex alphabet (RFC 4648), as DNSSEC NSEC3 uses it. |
+| | `Ec` | Elliptic curve helpers: point encoding and checks, and ECDSA signatures between DER and raw (r, s) / r‖s form. |
+| | `RenamedProperty` | Reads a system property under its new name, falling back to an old name (with a one-time deprecation warning). |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
 
 ## Properties
@@ -415,7 +418,16 @@ All in `us.bringardner.parley.core.util`.
   Only address literals are accepted, never a host name.
 - **`PrivateKeys`**: `PrivateKeys.load(file, passphrase)` reads RSA and EC (P-256, P-384, P-521) keys
   from PKCS#8 and traditional PEM files, encrypted or not, and from PKCS12 and JKS key stores.
-  `Pem` and `Der` are the readers it is built on.
+  `Pem` and `Der` are the readers it is built on. `PrivateKeys.writePrivateFile(file, text)` creates a
+  new file only its owner can read (POSIX `rw-------`; on Windows the ACL is cut down to the owner),
+  and `PrivateKeys.exposure(file)` says if an existing key file can be read by its group or everyone
+  (`null` when it is private), so a server can warn before using it.
+- **`Ec`**: `encodePoint` / `decodePoint` (with an on-curve check), `signatureToDer` and
+  `signatureFromDer` to convert ECDSA signatures between Java's DER form and the raw r‖s form that
+  DNSSEC, JOSE and SSH use.
+- **`Base32Hex`**: `Base32Hex.encode(bytes)` / `decode(text)`, unpadded, case-insensitive on decode.
+- **`RenamedProperty`**: `RenamedProperty.get("New.name", "Old.name", default)` for properties that
+  were renamed: the new name wins, the old one still works and logs once that it is deprecated.
 - **`Hex`**: `Hex.encode(bytes)`, `Hex.encode(bytes, true, ":")` for fingerprints, `Hex.decode(text)`.
 - **`LogHelper`**: see [What's inside](#whats-inside).
 
