@@ -4,7 +4,7 @@ The core of **Parley**, a family of Java libraries for implementing internet pro
 dependency-free building blocks that the other Parley projects share. It gives you property lookup and logging for any class, threads
 that can be stopped cleanly, a TCP/SSL server and client base, and a few utilities.
 The Swing date and time pickers that used to be here are now a separate library,
-[swing-widgets](https://github.com/tony-bringardner/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
+[swing-widgets](https://github.com/parley-project/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
 
 - **Java 11** or later (virtual threads are used on Java 21+ when you ask for them)
 - **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
@@ -39,7 +39,7 @@ parley-core is published to GitHub Packages (and, once released there, Maven Cen
 <repositories>
     <repository>
         <id>github</id>
-        <url>https://maven.pkg.github.com/tony-bringardner/parley-core</url>
+        <url>https://maven.pkg.github.com/parley-project/parley-core</url>
     </repository>
 </repositories>
 ```
@@ -453,7 +453,7 @@ Set the new version in `pom.xml`, then:
 - `mvn clean deploy` publishes to GitHub Packages (a `github` server with a token that has the
   `write:packages` scope in `~/.m2/settings.xml`).
 - `mvn -Prelease clean deploy` publishes to Maven Central; see
-  [parley-parent](https://github.com/tony-bringardner/parley-parent#releasing) for what that needs.
+  [parley-parent](https://github.com/parley-project/parley-parent#releasing) for what that needs.
 
 Then tag the release (`v<version>`) and push.
 
