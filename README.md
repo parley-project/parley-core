@@ -436,12 +436,10 @@ coverage report to `target/site/jacoco/index.html`.
 
 ## Releasing
 
-Set the new version in `pom.xml` (and the parent's, if it changed), then run
-`../parley-build/release.sh` from this folder. It publishes to Maven Central with
-`mvn -Prelease clean deploy`, then tags the release (`v<version>`) and pushes; finish by pressing
-Publish on central.sonatype.com. See
-[parley-parent](https://github.com/parley-project/parley-parent#releasing) for what a Central
-release needs.
+Set the new version in `pom.xml` (and the parent's, if it changed), then
+`mvn -Prelease clean deploy` publishes to Maven Central; see
+[parley-parent](https://github.com/parley-project/parley-parent#releasing) for what that needs.
+Then tag the release (`v<version>`) and push.
 
 ## License
 
