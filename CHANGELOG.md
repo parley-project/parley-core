@@ -1,24 +1,6 @@
 # Changelog
 
-## Unreleased
-
-### Added
-
-- `Base32Hex` (RFC 4648 base32 with the extended hex alphabet) and `RenamedProperty` (read a renamed
-  system property, warning once about the old name), moved from parley-dns.
-- `Ec`: elliptic curve helpers shared by parley-ssh and parley-dns: the on-curve check for points
-  from outside (`checkOnCurve`), SEC1 uncompressed and raw x||y point encodings (decoding checks the
-  point), and ECDSA signatures between the JDK's DER form, (r, s) and r||s (DNSSEC), with strict,
-  bounds-checked DER parsing.
-- `PrivateKeys.exposure(File)`: says whether a private key file can be read by its group or by
-  everyone.
-- Limits per client for every server: `MaxConnectionsPerClient` (`tryAcquireClient` /
-  `releaseClient`, and `tryAcquireConnection(InetAddress)` / `releaseConnection(InetAddress)` for both
-  limits at once) so one host can't take every place under `MaxConnections`, and `AllowedClients`
-  (`isClientAllowed`), an `AddressMatcher` list of the client addresses allowed to connect. Both
-  default to no limit, so nothing changes unless they are set. Servers built on parley-net use them.
-
-## parley-core 1.0.0 (2026-10-10)
+## parley-core 1.0.0 (2026-10-16)
 
 BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
 (see [BjlCore history](#bjlcore-history)); the changes since then are below, with the renames first.
@@ -67,6 +49,19 @@ BjlCore is now **parley-core**, part of the Parley library family. It continues 
 
 ### Added
 
+- `Base32Hex` (RFC 4648 base32 with the extended hex alphabet) and `RenamedProperty` (read a renamed
+  system property, warning once about the old name), moved from parley-dns.
+- `Ec`: elliptic curve helpers shared by parley-ssh and parley-dns: the on-curve check for points
+  from outside (`checkOnCurve`), SEC1 uncompressed and raw x||y point encodings (decoding checks the
+  point), and ECDSA signatures between the JDK's DER form, (r, s) and r||s (DNSSEC), with strict,
+  bounds-checked DER parsing.
+- `PrivateKeys.exposure(File)`: says whether a private key file can be read by its group or by
+  everyone.
+- Limits per client for every server: `MaxConnectionsPerClient` (`tryAcquireClient` /
+  `releaseClient`, and `tryAcquireConnection(InetAddress)` / `releaseConnection(InetAddress)` for both
+  limits at once) so one host can't take every place under `MaxConnections`, and `AllowedClients`
+  (`isClientAllowed`), an `AddressMatcher` list of the client addresses allowed to connect. Both
+  default to no limit, so nothing changes unless they are set. Servers built on parley-net use them.
 - `TlsSockets.configureClient(SSLEngine, host, verifyHostname)` and
   `TlsSockets.clientEngine(ctx, host, port, verifyHostname)`: the same client settings (SNI, host
   name check) for non-blocking connections that use an SSLEngine instead of an SSLSocket, used by the
