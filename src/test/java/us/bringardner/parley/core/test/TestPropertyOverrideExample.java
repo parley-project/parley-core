@@ -63,13 +63,15 @@ public class TestPropertyOverrideExample {
 	/** A file of the same name higher in the stack (earlier on the class path) with b only. */
 	@Test
 	public void sameNamedFileEarlierOnTheClassPathOverridesOneKey(@TempDir Path root) throws Exception {
+		System.out.println("TestPropertyOverrideExample files: "+root);
+		String where = "files in "+root;
 		URL library = dir(root, "library", "a = 1\nb = 2\nc = 3\n").toUri().toURL();
 		URL application = dir(root, "application", "b = 10\n").toUri().toURL();
 
-		assertArrayEquals(new String[] {"1", "10", "3"}, load(application, library));
+		assertArrayEquals(new String[] {"1", "10", "3"}, load(application, library), where);
 
 		//  The order of the class path decides, not the name of the package: library first, library wins.
-		assertArrayEquals(new String[] {"1", "2", "3"}, load(library, application));
+		assertArrayEquals(new String[] {"1", "2", "3"}, load(library, application), where);
 	}
 }
 
