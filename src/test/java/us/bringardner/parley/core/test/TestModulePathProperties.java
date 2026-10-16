@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import us.bringardner.parley.core.BaseObject;
 
@@ -23,7 +24,7 @@ import us.bringardner.parley.core.BaseObject;
  * Module a.base:  Base extends BaseObject
  * Module b.sub:   Sub extends Base, and Main, which prints the property values
  *
- * Everything is built under target/ (javac, jar and java are the ones running this test).
+ * Everything is built in a temporary directory (javac, jar and java are the ones running this test).
  */
 public class TestModulePathProperties {
 
@@ -54,19 +55,11 @@ public class TestModulePathProperties {
 	}
 
 	@Test
-	public void propertiesAreFoundForClassesInNamedModules() throws Exception {
+	public void propertiesAreFoundForClassesInNamedModules(@TempDir Path root) throws Exception {
 		Assumptions.assumeTrue(new File(tool("javac")).exists(), "needs a JDK");
 
 		Path classes = Path.of(BaseObject.class.getProtectionDomain().getCodeSource().getLocation().toURI());
 		Assumptions.assumeTrue(Files.isDirectory(classes), "parley-core must be run from classes");
-
-		Path root = Path.of("target", "jpms-test").toAbsolutePath();
-		if( Files.exists(root) ) {
-			try(var s = Files.walk(root)) {
-				s.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-			}
-		}
-		Files.createDirectories(root);
 
 		// parley-core as an (automatic) module
 		run(root, tool("jar"), "--create", "--file", "parley-core.jar", "-C", classes.toString(), ".");

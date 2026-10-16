@@ -26,6 +26,7 @@
 package us.bringardner.parley.core.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -655,10 +656,12 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 	}
 
 	@Test
-	public void testJulLogger() {
+	public void testJulLogger() throws Exception {
 		//The java.util.logging package is not real done well in my opinion.
-		//  relative to the project directory (the working directory when tests are run by Maven or Eclipse)
-		System.setProperty("java.util.logging.config.file", new File("resources/JulLogging.properties").getAbsolutePath());
+		//  resources/ is a test resource folder, so the file is on the test class path wherever the build puts it
+		java.net.URL config = TestCore.class.getResource("/JulLogging.properties");
+		assertNotNull(config, "JulLogging.properties is not on the test class path");
+		System.setProperty("java.util.logging.config.file", new File(config.toURI()).getAbsolutePath());
 
 		JulLogger test = new JulLogger();
 		test.init("us.bringardner.parley.core.Log4JLogger");
