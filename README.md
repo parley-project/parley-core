@@ -25,7 +25,7 @@ The Swing date and time pickers that used to be here are now a separate library,
 
 ## Getting started
 
-parley-core is published to GitHub Packages (and, once released there, Maven Central):
+parley-core is on Maven Central, so no extra repository is needed:
 
 ```xml
 <dependency>
@@ -34,18 +34,6 @@ parley-core is published to GitHub Packages (and, once released there, Maven Cen
     <version>1.0.0</version>
 </dependency>
 ```
-
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/parley-project/parley-core</url>
-    </repository>
-</repositories>
-```
-
-GitHub Packages needs a token even for public packages. Add a `<server>` with the id `github`
-to `~/.m2/settings.xml` with your GitHub user name and a token that has the `read:packages` scope.
 
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
@@ -448,14 +436,12 @@ coverage report to `target/site/jacoco/index.html`.
 
 ## Releasing
 
-Set the new version in `pom.xml`, then:
-
-- `mvn clean deploy` publishes to GitHub Packages (a `github` server with a token that has the
-  `write:packages` scope in `~/.m2/settings.xml`).
-- `mvn -Prelease clean deploy` publishes to Maven Central; see
-  [parley-parent](https://github.com/parley-project/parley-parent#releasing) for what that needs.
-
-Then tag the release (`v<version>`) and push.
+Set the new version in `pom.xml` (and the parent's, if it changed), then run
+`../parley-build/release.sh` from this folder. It publishes to Maven Central with
+`mvn -Prelease clean deploy`, then tags the release (`v<version>`) and pushes; finish by pressing
+Publish on central.sonatype.com. See
+[parley-parent](https://github.com/parley-project/parley-parent#releasing) for what a Central
+release needs.
 
 ## License
 
