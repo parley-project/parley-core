@@ -54,6 +54,8 @@ public class TestPropertyFileMerge {
 
 	@Test
 	public void firstFileWinsAndLaterFilesFillIn(@TempDir Path root) throws Exception {
+		System.out.println("TestPropertyFileMerge files: "+root);
+		String where = " (files in "+root+")";
 		Path first = root.resolve("first");
 		Path second = root.resolve("second");
 		write(first, "a = first\nb = first\n");
@@ -64,10 +66,10 @@ public class TestPropertyFileMerge {
 			BaseObject o = (BaseObject) loader.loadClass(MergeTarget.class.getName()).getDeclaredConstructor().newInstance();
 			assertEquals(loader, o.getClass().getClassLoader());
 
-			assertEquals("first", o.getProperty("a"));
-			assertEquals("first", o.getProperty("b"), "the first file on the class path wins");
-			assertEquals("second", o.getProperty("c"), "a value only the later file defines is kept");
-			assertNull(o.getProperty("d"));
+			assertEquals("first", o.getProperty("a"), "a"+where);
+			assertEquals("first", o.getProperty("b"), "the first file on the class path wins"+where);
+			assertEquals("second", o.getProperty("c"), "a value only the later file defines is kept"+where);
+			assertNull(o.getProperty("d"), "d"+where);
 		}
 	}
 }
