@@ -1,6 +1,7 @@
 package us.bringardner.parley.core.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +11,7 @@ import us.bringardner.parley.core.BaseObject;
  * Pins down the layering of {@link BaseObject#getProperty(String)}:
  * deployed defaults (class property files), overridden by sub classes, overridden by system properties.
  *
- * A prefix is the instance's prefix or the class name of any level of its hierarchy.
+ * The name is looked up as it is given: nothing is added to it.
  */
 public class TestPropertyLayering {
 
@@ -40,14 +41,16 @@ public class TestPropertyLayering {
 	}
 
 	/**
-	 * Characterization: the unprefixed system property is global. A -Dport=1 beats the
-	 * class-specific PropSub.port=9000 in the file, and would also hit every other class that asks for "port".
+	 * getProperty looks up exactly the name it is given. PropSub.properties has "<PropSub>.port=9000":
+	 * that is found by its full name only, and a -Dport=1 is another property.
 	 */
 	@Test
-	public void plainSystemPropertyBeatsClassSpecificFileValue() {
-		assertEquals("9000", new PropSub().getProperty("port"));
+	public void namesAreLookedUpAsGiven() {
+		assertEquals("9000", new PropSub().getProperty(SUB+".port"));
+		assertNull(new PropSub().getProperty("port"));
 		System.setProperty("port", "1");
 		try {
+			assertEquals("9000", new PropSub().getProperty(SUB+".port"));
 			assertEquals("1", new PropSub().getProperty("port"));
 		} finally {
 			System.clearProperty("port");
@@ -55,37 +58,36 @@ public class TestPropertyLayering {
 	}
 
 	/**
-	 * PropBase.properties has "<PropBase>.timeout=5". The prefix used for the search is always the
-	 * concrete class (PropSub), so the super class's own prefixed key is never matched for a sub class instance.
+	 * PropBase.properties has "<PropBase>.timeout=5": a sub class's object finds it in its super
+	 * class's file, by that name.
 	 */
 	@Test
-	public void superClassPrefixedKeyInFileAppliesToSubClass() {
-		assertEquals("5", new PropSub().getProperty("timeout"));
+	public void superClassFileIsSearchedByTheFullName() {
+		assertEquals("5", new PropSub().getProperty(BASE+".timeout"));
+		assertNull(new PropSub().getProperty("timeout"), "No prefix is added");
 	}
 
-	/**
-	 * Same thing for system properties. -D<PropBase>.sysKey=x configures PropBase
-	 * but not its sub classes.
-	 */
+	/** A system property is found by its full name, whatever object asks. */
 	@Test
-	public void superClassPrefixedSystemPropertyAppliesToSubClass() {
+	public void systemPropertyByFullName() {
 		System.setProperty(BASE+".sysKey", "x");
 		try {
-			assertEquals("x", new PropBase().getProperty("sysKey"));
-			assertEquals("x", new PropSub().getProperty("sysKey"));
+			assertEquals("x", new PropBase().getProperty(BASE+".sysKey"));
+			assertEquals("x", new PropSub().getProperty(BASE+".sysKey"));
+			assertNull(new PropSub().getProperty("sysKey"));
 		} finally {
 			System.clearProperty(BASE+".sysKey");
 		}
 	}
 
-	/**
-	 * Control for the gap above: the concrete class's own prefix does work.
-	 */
+	/** propertyName builds the name with the object's prefix, its class name by default. */
 	@Test
-	public void concreteClassPrefixedSystemPropertyWorks() {
+	public void propertyNameUsesThePrefix() {
 		System.setProperty(SUB+".sysKey2", "y");
 		try {
-			assertEquals("y", new PropSub().getProperty("sysKey2"));
+			PropSub sub = new PropSub();
+			assertEquals(SUB+".sysKey2", sub.propertyName("sysKey2"));
+			assertEquals("y", sub.getProperty(sub.propertyName("sysKey2")));
 		} finally {
 			System.clearProperty(SUB+".sysKey2");
 		}

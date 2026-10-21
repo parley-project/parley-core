@@ -34,12 +34,12 @@ public class TestPropertyOverrideExample {
 
 	@Test
 	public void systemPropertyStillWins() {
-		System.setProperty(AbcBase.class.getName()+".b", "99");
+		System.setProperty("b", "99");
 		try {
 			assertAbc(new AbcSub(), "1", "99", "3");
 			assertAbc(new AbcBase(), "1", "99", "3");
 		} finally {
-			System.clearProperty(AbcBase.class.getName()+".b");
+			System.clearProperty("b");
 		}
 	}
 

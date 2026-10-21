@@ -133,7 +133,7 @@ public class SecureBaseObject extends BaseObject {
 	public boolean isSecure() {		
 		Boolean ret = secure;
 		if( ret == null ) {
-			ret = getBooleanProperty(PROPERTY_SECURE, false);
+			ret = getBooleanProperty(propertyName(PROPERTY_SECURE), false);
 			secure = ret;
 		}
 		return ret;
@@ -377,7 +377,7 @@ public class SecureBaseObject extends BaseObject {
 			synchronized (this) {
 				if( !keyStorePasswordRead ) {
 					if( keyStorePassword == null ) {
-						keyStorePassword = getProperty(PROPERTY_PASS_PHRASE);
+						keyStorePassword = getProperty(propertyName(PROPERTY_PASS_PHRASE));
 						//  Never log the password itself
 						logDebug(PROPERTY_PASS_PHRASE+(keyStorePassword == null ? " is not defined":" is defined"));
 					}
@@ -412,7 +412,7 @@ public class SecureBaseObject extends BaseObject {
 			synchronized (this) {
 				if( !keyStoreFileNameRead ) {
 					if( keyStoreFileName == null ) {
-						keyStoreFileName = getProperty(PROPERTY_KEY_STORE_NAME);	
+						keyStoreFileName = getProperty(propertyName(PROPERTY_KEY_STORE_NAME));	
 						logDebug(PROPERTY_KEY_STORE_NAME+"="+keyStoreFileName);
 					}
 					keyStoreFileNameRead = true;
@@ -433,7 +433,7 @@ public class SecureBaseObject extends BaseObject {
 		if( keyStoreType == null ) {
 			synchronized (this) {
 				if( keyStoreType == null ) {
-					keyStoreType = getProperty(PROPERTY_KEY_STORE_TYPE, KeyStore.getDefaultType());
+					keyStoreType = getProperty(propertyName(PROPERTY_KEY_STORE_TYPE), KeyStore.getDefaultType());
 					logDebug(PROPERTY_KEY_STORE_TYPE+"="+keyStoreType);
 				}
 			}
@@ -449,7 +449,7 @@ public class SecureBaseObject extends BaseObject {
 		if( algorithm == null ) {
 			synchronized (this) {
 				if( algorithm == null ) {
-					algorithm = getProperty(PROPERTY_ALGORITHM, KeyManagerFactory.getDefaultAlgorithm());
+					algorithm = getProperty(propertyName(PROPERTY_ALGORITHM), KeyManagerFactory.getDefaultAlgorithm());
 					logDebug(PROPERTY_ALGORITHM+"="+algorithm);
 				}
 			}
@@ -466,7 +466,7 @@ public class SecureBaseObject extends BaseObject {
 		if( protocol == null ) {
 			synchronized (this) {
 				if( protocol == null ) {
-					protocol = getProperty(PROPERTY_PROTOCOL,PROTOCOL_TLS);
+					protocol = getProperty(propertyName(PROPERTY_PROTOCOL),PROTOCOL_TLS);
 					logDebug(PROPERTY_PROTOCOL+"="+protocol);
 				}
 			}

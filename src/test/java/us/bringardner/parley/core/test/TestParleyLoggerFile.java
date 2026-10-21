@@ -26,7 +26,8 @@ import us.bringardner.parley.core.ParleyLogger;
  */
 public class TestParleyLoggerFile {
 
-	private static final String PREFIX = "us.bringardner.parley.core.ParleyLogger.";
+	// ParleyLogger's settings are read by their names alone (logFile, logFileMaxSize ...)
+	private static final String PREFIX = "";
 
 	/** Create a logger with the given properties (cleared again afterwards). */
 	private static ParleyLogger logger(String name, Map<String, String> props) {

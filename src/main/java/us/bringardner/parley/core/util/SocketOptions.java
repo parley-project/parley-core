@@ -83,7 +83,7 @@ public final class SocketOptions {
 		if (lingerTime < 0) {
 			synchronized (this) {
 				if (lingerTime < 0) {
-					lingerTime = properties.getIntProperty(PROPERTY_SO_LINGER, DEFAULT_SO_LINGER);
+					lingerTime = properties.getIntProperty(properties.propertyName(PROPERTY_SO_LINGER), DEFAULT_SO_LINGER);
 				}
 			}
 		}
@@ -98,7 +98,7 @@ public final class SocketOptions {
 	public boolean isSoLinger() {
 		Boolean ret = soLinger;
 		if (ret == null) {
-			ret = properties.getBooleanProperty(PROPERTY_IS_SO_LINGER, false);
+			ret = properties.getBooleanProperty(properties.propertyName(PROPERTY_IS_SO_LINGER), false);
 			soLinger = ret;
 		}
 		return ret;
@@ -112,7 +112,7 @@ public final class SocketOptions {
 	public boolean isKeepAlive() {
 		Boolean ret = keepAlive;
 		if (ret == null) {
-			ret = properties.getBooleanProperty(PROPERTY_KEEP_ALIVE, false);
+			ret = properties.getBooleanProperty(properties.propertyName(PROPERTY_KEEP_ALIVE), false);
 			keepAlive = ret;
 		}
 		return ret;
@@ -129,7 +129,7 @@ public final class SocketOptions {
 	public boolean isTcpNoDelay() {
 		Boolean ret = tcpNoDelay;
 		if (ret == null) {
-			ret = properties.getBooleanProperty(PROPERTY_TCP_NO_DELAY, false);
+			ret = properties.getBooleanProperty(properties.propertyName(PROPERTY_TCP_NO_DELAY), false);
 			tcpNoDelay = ret;
 		}
 		return ret;
@@ -144,7 +144,7 @@ public final class SocketOptions {
 		if (socketTimeout < 0) {
 			synchronized (this) {
 				if (socketTimeout < 0) {
-					socketTimeout = properties.getIntProperty(PROPERTY_SOCKET_TIMEOUT, DEFAULT_SOCKET_TIMEOUT);
+					socketTimeout = properties.getIntProperty(properties.propertyName(PROPERTY_SOCKET_TIMEOUT), DEFAULT_SOCKET_TIMEOUT);
 				}
 			}
 		}

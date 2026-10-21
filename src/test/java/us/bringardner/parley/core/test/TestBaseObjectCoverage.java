@@ -106,12 +106,14 @@ public class TestBaseObjectCoverage {
 		try {
 			obj.prefix("test.custom.prefix");
 			assertEquals("test.custom.prefix", obj.prefix());
-			assertEquals("red", obj.getProperty("Color"), "A prefixed property should win");
+			assertEquals("test.custom.prefix.Color", obj.propertyName("Color"));
+			assertEquals("red", obj.getProperty(obj.propertyName("Color")), "The caller builds the prefixed name");
+			assertEquals("blue", obj.getProperty("Color"), "getProperty looks up the name it is given, as it is");
 
 			obj.setSupportPrefixProperty(false);
 			assertFalse(obj.isSupportPrefixProperty());
 			assertNull(obj.prefix(), "No prefix when prefix support is off");
-			assertEquals("blue", obj.getProperty("Color"), "Prefixed properties are ignored when prefix support is off");
+			assertEquals("Color", obj.propertyName("Color"), "No prefix in the name when prefix support is off");
 			//  property files are still searched (TestCoreBase.properties defines Value02)
 			assertEquals("2", obj.getProperty("Value02"));
 		} finally {

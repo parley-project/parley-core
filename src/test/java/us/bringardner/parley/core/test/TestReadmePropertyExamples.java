@@ -52,36 +52,23 @@ public class TestReadmePropertyExamples {
 	}
 
 	@Test
-	public void classSystemPropertyBeatsTheFile() {
-		System.setProperty(MAILER+".SmtpHost", "relay");
+	public void systemPropertyBeatsTheFile() {
+		System.setProperty("SmtpHost", "relay");
 		assertEquals("relay", new ExampleMailer().getProperty("SmtpHost"));
+		assertEquals("relay", new ExampleBulkMailer().getProperty("SmtpHost"), "for every object that asks for the name");
 	}
 
 	@Test
-	public void superClassSystemPropertyAppliesToSubClass() {
+	public void nameIsLookedUpAsGiven() {
 		System.setProperty(MAILER+".SmtpHost", "relay");
-		assertEquals("relay", new ExampleBulkMailer().getProperty("SmtpHost"));
-	}
-
-	@Test
-	public void ownClassNameIsLookedUpFirst() {
-		System.setProperty(MAILER+".SmtpHost", "relay");
-		System.setProperty(BULK+".SmtpHost", "bulk-relay");
-		assertEquals("bulk-relay", new ExampleBulkMailer().getProperty("SmtpHost"));
-		assertEquals("relay", new ExampleMailer().getProperty("SmtpHost"));
-	}
-
-	@Test
-	public void plainSystemPropertyAppliesToEveryClass() {
-		System.setProperty("SmtpHost", "other");
-		assertEquals("other", new ExampleMailer().getProperty("SmtpHost"));
-		assertEquals("other", new ExampleBulkMailer().getProperty("SmtpHost"));
+		assertEquals("mail.example.com", new ExampleMailer().getProperty("SmtpHost"), "a prefixed name is another name");
+		assertEquals("relay", new ExampleMailer().getProperty(MAILER+".SmtpHost"));
 	}
 
 	@Test
 	public void prefixPerInstance() {
 		assertEquals("jdbc:reports", new ExampleDatabase("reports").url());
-		assertEquals("jdbc:default", new ExampleDatabase("other").url());
+		assertNull(new ExampleDatabase("other").url());
 		System.setProperty("primary.Url", "jdbc:primary");
 		assertEquals("jdbc:primary", new ExampleDatabase("primary").url());
 	}
@@ -100,6 +87,6 @@ class ExampleDatabase extends TestCoreBase {
 	}
 
 	String url() {
-		return getProperty("Url");
+		return getProperty(propertyName("Url"));
 	}
 }

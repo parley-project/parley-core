@@ -31,7 +31,8 @@ import us.bringardner.parley.core.Log4JLogger;
  */
 public class TestLoggerCoverage {
 
-	private static final String LOGGER_PREFIX = ParleyLogger.class.getName()+".";
+	// ParleyLogger's settings are read by their names alone (logFile, logLevel ...)
+	private static final String LOGGER_PREFIX = "";
 
 	@Test
 	public void testSupplierDefaults() {
