@@ -1,5 +1,9 @@
 # Changelog
 
+## parley-core 1.1.0 (unreleased)
+
+No changes yet.
+
 ## parley-core 1.0.0 (2026-10-16)
 
 BjlCore is now **parley-core**, part of the Parley library family. It continues from BjlCore 1.3.0
