@@ -47,9 +47,9 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	
 	public static final int DEFAULT_PORT = 9200;
 
-	public static final String PROPERTY_PORT = "Port";
+	public static final String PROPERTY_PORT = "port";
 
-	public static final String PROPERTY_ACCEPT_TIMEOUT = "AcceptTimeout";
+	public static final String PROPERTY_ACCEPT_TIMEOUT = "acceptTimeout";
 
 	public static final int DEFAULT_ACCEPT_TIMEOUT = 60000;
 
@@ -58,16 +58,16 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	public static final int DEFAULT_SOCKET_TIMEOUT = SocketOptions.DEFAULT_SOCKET_TIMEOUT;
 
 	/** Milliseconds before answering a failed login, which slows down password guessing */
-	public static final String PROPERTY_LOGIN_FAILURE_DELAY = "LoginFailureDelay";
+	public static final String PROPERTY_LOGIN_FAILURE_DELAY = "loginFailureDelay";
 	public static final int DEFAULT_LOGIN_FAILURE_DELAY = 1000;
 	/** Failed logins before the connection is closed */
-	public static final String PROPERTY_MAX_LOGIN_ATTEMPTS = "MaxLoginAttempts";
+	public static final String PROPERTY_MAX_LOGIN_ATTEMPTS = "maxLoginAttempts";
 	public static final int DEFAULT_MAX_LOGIN_ATTEMPTS = 3;
 	/** Milliseconds a connection may take to log in before it is closed, 0 for no limit */
-	public static final String PROPERTY_LOGIN_TIME_LIMIT = "LoginTimeLimit";
+	public static final String PROPERTY_LOGIN_TIME_LIMIT = "loginTimeLimit";
 	public static final int DEFAULT_LOGIN_TIME_LIMIT = 0;
 
-	public static final String PROPERTY_BACKLOG = "Backlog";
+	public static final String PROPERTY_BACKLOG = "backlog";
 
 	public static final int DEFAULT_BACKLOG = 0;
 
@@ -81,7 +81,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 
 	public static final String PROPERTY_IS_SO_LINGER = SocketOptions.PROPERTY_IS_SO_LINGER;
 
-	public static final String PROPERTY_BIND_ADDRESS = "BindAddress";
+	public static final String PROPERTY_BIND_ADDRESS = "bindAddress";
 
 	/** "true" turns on SO_KEEPALIVE for accepted sockets, so a peer that disappears is detected. Default false. */
 	public static final String PROPERTY_KEEP_ALIVE = SocketOptions.PROPERTY_KEEP_ALIVE;
@@ -90,7 +90,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	public static final String PROPERTY_TCP_NO_DELAY = SocketOptions.PROPERTY_TCP_NO_DELAY;
 
 	/** The most connections {@link #tryAcquireConnection()} allows at once, see {@link #DEFAULT_MAX_CONNECTIONS}. */
-	public static final String PROPERTY_MAX_CONNECTIONS = "MaxConnections";
+	public static final String PROPERTY_MAX_CONNECTIONS = "maxConnections";
 
 	/** 0: no limit. */
 	public static final int DEFAULT_MAX_CONNECTIONS = 0;
@@ -100,7 +100,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 * host can't take every place under {@link #PROPERTY_MAX_CONNECTIONS}.
 	 * See {@link #DEFAULT_MAX_CONNECTIONS_PER_CLIENT}.
 	 */
-	public static final String PROPERTY_MAX_CONNECTIONS_PER_CLIENT = "MaxConnectionsPerClient";
+	public static final String PROPERTY_MAX_CONNECTIONS_PER_CLIENT = "maxConnectionsPerClient";
 
 	/** 0: no limit per client. */
 	public static final int DEFAULT_MAX_CONNECTIONS_PER_CLIENT = 0;
@@ -110,7 +110,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 * list such as {@code "127.0.0.1 10.0.0.0/8 ::1"}. Unset or empty: everyone.
 	 * Connections from other addresses are closed as soon as they are accepted.
 	 */
-	public static final String PROPERTY_ALLOWED_CLIENTS = "AllowedClients";
+	public static final String PROPERTY_ALLOWED_CLIENTS = "allowedClients";
 
 	private volatile ServerSocketFactory factory;
 	
@@ -138,7 +138,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	//  The bind address may legitimately be null so we need a separate flag to know if the property has been read.
 	private volatile boolean bindAddrConfigured = false;
 
-	//  null means the IsSoLinger property has not been read yet
+	//  null means the isSoLinger property has not been read yet
 
 	//  null means the property has not been read yet
 
@@ -148,7 +148,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	private volatile int maxConnectionsPerClient = -1;
 	//  Connections open per client address (entries removed when they reach 0)
 	private final ConcurrentHashMap<InetAddress, AtomicInteger> perClient = new ConcurrentHashMap<InetAddress, AtomicInteger>();
-	//  null: the AllowedClients property has not been read yet
+	//  null: the allowedClients property has not been read yet
 	private volatile AddressMatcher allowedClients;
 
 	private volatile ServerSocket serverSocket;
@@ -298,7 +298,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 						try {
 							bindAddr = InetAddress.getByName(tmp.trim());
 						} catch (UnknownHostException e) {
-							logError("Cannot create BindAddress ("+tmp+").",e);
+							logError("Cannot create bindAddress ("+tmp+").",e);
 							throw new IllegalStateException(e);
 						}
 					}

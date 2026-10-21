@@ -756,7 +756,7 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 
 	private void runAbstractServer01(boolean useSSL) throws IOException {
 		if( useSSL) {
-			String ksname= getProperty("KeyStoreName");
+			String ksname= getProperty("keyStoreName");
 			File file = new File(ksname);
 			file = file.getCanonicalFile();
 			if( !file.exists()) {
@@ -885,7 +885,7 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 			fail("Could not process client code. e="+e, e);			
 		}
 		if( useSSL) {
-			String ksname= getProperty("KeyStoreName");
+			String ksname= getProperty("keyStoreName");
 			File file = new File(ksname);
 			file = file.getCanonicalFile();
 			if( file.exists()) {

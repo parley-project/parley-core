@@ -38,7 +38,7 @@ parley-core is on Maven Central, so no extra repository is needed:
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
 > `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
-> such as `us.bringardner.parley.core.ParleyLogger.LogLevel`. `BjlLogger` is now `ParleyLogger`.
+> such as `us.bringardner.parley.core.ParleyLogger.logLevel`. `BjlLogger` is now `ParleyLogger`.
 > See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 A class gets properties and logging by extending `BaseObject`:
@@ -226,7 +226,7 @@ Every `BaseObject` has `logDebug`, `logInfo`, `logWarn` and `logError` methods (
 
 The logger is chosen once, the first time one is needed:
 
-1. The class named by the system property `ILogger`, if it implements `ILogger`
+1. The class named by the system property `parley.core.logger`, if it implements `ILogger`
 2. `Log4JLogger`, if log4j 2 (`log4j-api`) is on the class path
 3. `ParleyLogger` otherwise
 
@@ -242,12 +242,12 @@ It is configured with properties (see [Properties](#properties); the class name 
 
 | Property | Meaning |
 |---|---|
-| `<logger name>.LogLevel` | The level for one logger, e.g. `-Dcom.example.Mailer.LogLevel=DEBUG` |
-| `LogLevel` | The level for all loggers. The default is `ERROR`. |
-| `LogFile` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
-| `LogFileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `LogFile.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |
-| `LogFileCount` | How many old log files to keep, 5 by default. With 0 the log file is started again from empty. |
-| `LogFlushInterval` | Milliseconds between writes to the log file. The default is 0: every entry is written as soon as it is logged. With a value (100 to 1000 is typical) entries are collected and written together, which is about ten times cheaper for a busy logger. The last entries (up to that many milliseconds) are lost if the JVM is killed; they are written at a normal exit and by `ParleyLogger.closeLogFiles()`. |
+| `<logger name>.logLevel` | The level for one logger, e.g. `-Dcom.example.Mailer.logLevel=DEBUG` |
+| `logLevel` | The level for all loggers. The default is `ERROR`. |
+| `logFile` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
+| `logFileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `logFile.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |
+| `logFileCount` | How many old log files to keep, 5 by default. With 0 the log file is started again from empty. |
+| `logFlushInterval` | Milliseconds between writes to the log file. The default is 0: every entry is written as soon as it is logged. With a value (100 to 1000 is typical) entries are collected and written together, which is about ten times cheaper for a busy logger. The last entries (up to that many milliseconds) are lost if the JVM is killed; they are written at a normal exit and by `ParleyLogger.closeLogFiles()`. |
 
 The first logger to open a file decides its size limit. If writing to the log file fails (a full
 disk, say), that is reported once on `System.err`, and again when writing works again.
@@ -303,7 +303,7 @@ Name, priority, daemon, context class loader and uncaught exception handler can 
 parley-core is a multi-release jar. On Java 21 and later a `BaseThread` can run on a virtual thread:
 
 - `setVirtual(true)` for one thread, or the system property
-  `-Dus.bringardner.parley.core.virtualThreads=true` for all of them. The default is `false`, and
+  `-Dparley.core.virtualThreads=true` for all of them. The default is `false`, and
   the value `auto` uses virtual threads on Java 24 and later, where blocking socket I/O no longer pins
   the carrier thread (JEP 491).
 - Before Java 21 the setting is accepted and ignored. `BaseThread.isVirtualSupported()` tells you which.
@@ -318,20 +318,20 @@ server socket from these properties (or the matching setters):
 
 | Property | Default | Meaning |
 |---|---|---|
-| `Port` | `9200` | Port to listen on (`0` = any free port) |
-| `BindAddress` | all addresses | Address to listen on |
-| `Backlog` | `0` (system default) | Connection queue length |
-| `AcceptTimeout` | `60000` ms | `accept()` timeout, so the loop can check `stopping` |
-| `SocketTimeout` | `60000` ms | Read timeout set by `configure(socket)` |
-| `IsSoLinger` / `SoLinger` | `false` / `10` s | SO_LINGER set by `configure(socket)` |
-| `KeepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
-| `TcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
-| `MaxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
-| `MaxConnectionsPerClient` | `0` (no limit) | Connections one client address may have at once, so one host can't take every place (`tryAcquireClient(address)`, `tryAcquireConnection(address)`) |
-| `AllowedClients` | everyone | Client addresses and networks allowed to connect, e.g. `127.0.0.1 10.0.0.0/8 ::1` (`isClientAllowed(address)`) |
-| `LoginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
-| `MaxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
-| `LoginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |
+| `port` | `9200` | Port to listen on (`0` = any free port) |
+| `bindAddress` | all addresses | Address to listen on |
+| `backlog` | `0` (system default) | Connection queue length |
+| `acceptTimeout` | `60000` ms | `accept()` timeout, so the loop can check `stopping` |
+| `socketTimeout` | `60000` ms | Read timeout set by `configure(socket)` |
+| `isSoLinger` / `soLinger` | `false` / `10` s | SO_LINGER set by `configure(socket)` |
+| `keepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
+| `tcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
+| `maxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
+| `maxConnectionsPerClient` | `0` (no limit) | Connections one client address may have at once, so one host can't take every place (`tryAcquireClient(address)`, `tryAcquireConnection(address)`) |
+| `allowedClients` | everyone | Client addresses and networks allowed to connect, e.g. `127.0.0.1 10.0.0.0/8 ::1` (`isClientAllowed(address)`) |
+| `loginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
+| `maxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
+| `loginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |
 | `secure` | `false` | Use SSL (see [SSL](#ssl)) |
 
 ```java
@@ -367,8 +367,8 @@ the protocol server that handles logins applies them. A server can change the de
 `getDefaultLoginFailureDelay()` and `getDefaultMaxLoginAttempts()`.
 
 `SocketClient` is the client side: `new SocketClient(useSSL).getSocket(host, port)` returns a
-socket configured with the same `SocketTimeout`, `IsSoLinger`, `SoLinger`, `KeepAlive` and
-`TcpNoDelay` properties.
+socket configured with the same `socketTimeout`, `isSoLinger`, `soLinger`, `keepAlive` and
+`tcpNoDelay` properties.
 
 ## SSL
 
@@ -377,18 +377,18 @@ socket configured with the same `SocketTimeout`, `IsSoLinger`, `SoLinger`, `Keep
 
 | Property | Meaning |
 |---|---|
-| `KeyStoreName` | A class path resource (e.g. `/keys/server.p12`) or a file |
-| `KeyStorePassword` | Without it no key managers are created, which is fine for a client |
-| `KeyStoreType` | e.g. `PKCS12`. The default is the JVM default type (`PKCS12` since Java 9). |
-| `Algorithm` | Key manager algorithm, e.g. `SunX509`. The default is the JVM default (`KeyManagerFactory.getDefaultAlgorithm()`). |
-| `Protocol` | `SSLContext` protocol. The default is `TLS`. |
+| `keyStoreName` | A class path resource (e.g. `/keys/server.p12`) or a file |
+| `keyStorePassword` | Without it no key managers are created, which is fine for a client |
+| `keyStoreType` | e.g. `PKCS12`. The default is the JVM default type (`PKCS12` since Java 9). |
+| `algorithm` | Key manager algorithm, e.g. `SunX509`. The default is the JVM default (`KeyManagerFactory.getDefaultAlgorithm()`). |
+| `protocol` | `SSLContext` protocol. The default is `TLS`. |
 
 Trust managers can be set per object with `setTrustManagers(...)` or for all new objects with
 `SecureBaseObject.setDefaultTrustManagers(...)`. `makecert.sh` creates a self-signed key store
 for testing.
 
 `TlsSockets` and `TrustAllCertificates` (see [Utilities](#utilities)) cover the client side. The system
-property `ForceTlsVersion` (for example `-DForceTlsVersion=TLSv1.2`) is available through
+property `parley.core.forceTlsVersion` (for example `-DForceTlsVersion=TLSv1.2`) is available through
 `SecureBaseObject.getForcedTlsProtocols()`; parley-core doesn't apply it itself, the protocol
 libraries that use it do.
 

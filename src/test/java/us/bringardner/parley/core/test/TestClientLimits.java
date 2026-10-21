@@ -17,8 +17,8 @@ import us.bringardner.parley.core.util.AbstractCoreServer;
 
 /**
  * The limits per client every server shares: an allow list of client addresses
- * (AllowedClients) and a connection limit per address (MaxConnectionsPerClient),
- * so one host can't take every place under MaxConnections.
+ * (allowedClients) and a connection limit per address (maxConnectionsPerClient),
+ * so one host can't take every place under maxConnections.
  */
 public class TestClientLimits {
 

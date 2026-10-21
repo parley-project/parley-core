@@ -51,18 +51,18 @@ import java.util.concurrent.TimeUnit;
  */
 public class ParleyLogger extends BaseObject implements ILogger {
 
-	public static final String PROPERTY_LOG_LEVEL = "LogLevel";
-	public static final String PROPERTY_LOG_FILE = "LogFile";
+	public static final String PROPERTY_LOG_LEVEL = "logLevel";
+	public static final String PROPERTY_LOG_FILE = "logFile";
 	/**
-	 * When the log file would grow past this size it is renamed (to LogFile.1, the old LogFile.1 to LogFile.2 ...)
+	 * When the log file would grow past this size it is renamed (to logFile.1, the old logFile.1 to logFile.2 ...)
 	 * and a new one is started. Bytes, or with a K, M or G suffix ("10M"). The default (0) is no limit.
 	 */
-	public static final String PROPERTY_LOG_FILE_MAX_SIZE = "LogFileMaxSize";
+	public static final String PROPERTY_LOG_FILE_MAX_SIZE = "logFileMaxSize";
 	/**
 	 * How many old log files are kept when {@link #PROPERTY_LOG_FILE_MAX_SIZE} is set, the default is
 	 * {@link #DEFAULT_LOG_FILE_COUNT}. With 0 the log file is started again from empty.
 	 */
-	public static final String PROPERTY_LOG_FILE_COUNT = "LogFileCount";
+	public static final String PROPERTY_LOG_FILE_COUNT = "logFileCount";
 	public static final int DEFAULT_LOG_FILE_COUNT = 5;
 	/**
 	 * Milliseconds between flushes of a log file. By default (0) every entry is written to the file as
@@ -71,10 +71,10 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 * (up to this many milliseconds) are lost if the JVM is killed. They are written at a normal exit and
 	 * by {@link #closeLogFiles()}. Like the maximum size, the first logger to open a file decides it.
 	 */
-	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "LogFlushInterval";
+	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "logFlushInterval";
 	/**
 	 * The default level is ERROR so that errors are never silently discarded.
-	 * Set the LogLevel property (NONE, ERROR, WARN, INFO, DEBUG) to change it.
+	 * Set the logLevel property (NONE, ERROR, WARN, INFO, DEBUG) to change it.
 	 */
 	public static final Level DEFAULT_LEVEL = Level.ERROR;
 	
@@ -232,12 +232,12 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 * Initialize this logger.
 	 * 
 	 * The level is taken from the first of these properties that is defined:
-	 * 	name.LogLevel  (specific to this logger name)
-	 * 	LogLevel       
+	 * 	name.logLevel  (specific to this logger name)
+	 * 	logLevel       
 	 * 
 	 * The value is not case sensitive. An invalid value is reported and the default (ERROR) is used.
 	 *  
-	 * LogFile may be System.out, System.err or a file name.  Log files are opened once, in append mode,
+	 * logFile may be System.out, System.err or a file name.  Log files are opened once, in append mode,
 	 * and shared by all loggers that use the same file.
 	 */
 	public void init(String name) {

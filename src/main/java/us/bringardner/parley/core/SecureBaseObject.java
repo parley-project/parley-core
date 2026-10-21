@@ -54,18 +54,18 @@ import javax.net.ssl.TrustManager;
  *
  */
 public class SecureBaseObject extends BaseObject {
-	public static final String PROPERTY_KEY_STORE_NAME = "KeyStoreName";
-	public static final String PROPERTY_PASS_PHRASE = "KeyStorePassword";
-	public static final String PROPERTY_KEY_STORE_TYPE = "KeyStoreType";
-	public static final String PROPERTY_ALGORITHM = "Algorithm";
-	public static final String PROPERTY_PROTOCOL = "Protocol";
+	public static final String PROPERTY_KEY_STORE_NAME = "keyStoreName";
+	public static final String PROPERTY_PASS_PHRASE = "keyStorePassword";
+	public static final String PROPERTY_KEY_STORE_TYPE = "keyStoreType";
+	public static final String PROPERTY_ALGORITHM = "algorithm";
+	public static final String PROPERTY_PROTOCOL = "protocol";
 	public static final String PROPERTY_SECURE = "secure";
 	public static final String PROTOCOL_TLS = "TLS";	
 	/**
 	 * System property that forces a TLS version (for example TLSv1.2) because some clients
 	 * don't support TLSv1.3. parley-core doesn't read it; the Parley protocol libraries do.
 	 */
-	public static final String PROPERTY_FORCE_TLS_VERSION = "ForceTlsVersion";
+	public static final String PROPERTY_FORCE_TLS_VERSION = "parley.core.forceTlsVersion";
 
 	/**
 	 * The protocols to enable when the {@value #PROPERTY_FORCE_TLS_VERSION} system property is set.
@@ -111,7 +111,7 @@ public class SecureBaseObject extends BaseObject {
 	private volatile String protocol;
 
 	private volatile String keyStorePassword;
-	//  true once the KeyStorePassword / KeyStoreName properties have been looked up, so a value that isn't
+	//  true once the keyStorePassword / keyStoreName properties have been looked up, so a value that isn't
 	//  set is not looked up (and logged) again on every call
 	private volatile boolean keyStorePasswordRead;
 	private volatile boolean keyStoreFileNameRead;

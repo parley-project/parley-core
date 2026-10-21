@@ -56,7 +56,7 @@ public class BaseObject {
 	 * hundred BaseObject classes went past, so files were read again and again.
 	 */
 	public static final int DEFAULT_MAX_PROPERTIES = 1000;
-	public static final String PROPERTY_LOGGER = "ILogger";
+	public static final String PROPERTY_LOGGER = "parley.core.logger";
 	/** Log4j is told this is a logging "wrapper" class, so it reports the code that called logError (etc.) as the caller. */
 	private static final String FQCN = BaseObject.class.getName();
 	private static volatile Class<?>   loggerClass = null;
@@ -174,7 +174,7 @@ public class BaseObject {
 	 * @see #getProperty(String, String)
 	 * @see #isSupportPrefixProperty()
 	 */
-	protected String getPropertyPrefix() {
+	public String getPropertyPrefix() {
 		if( !isSupportPrefixProperty()) {
 			return null;
 		}
@@ -679,7 +679,7 @@ public class BaseObject {
 	 * The objective the this class is to implement logging without creating 
 	 * runtime dependencies to third party libraries. 
 	 * 
-	 * 1)  The System.property for "ILogger" is defined, that class is used.
+	 * 1)  The System.property "parley.core.logger" is defined, that class is used.
 	 * 2)  If the log4j2 API (org.apache.logging.log4j) is in the class path, Log4JLogger is used.
 	 * 3)  The default is ParleyLogger.
 	 * 
@@ -703,7 +703,7 @@ public class BaseObject {
 						}
 					}
 					if( loggerClass == null ) 	{						
-						//  Only with a log4j implementation, the log4j API alone would ignore our LogLevel and LogFile settings
+						//  Only with a log4j implementation, the log4j API alone would ignore our logLevel and logFile settings
 						loggerClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : ParleyLogger.class;
 					}
 				}

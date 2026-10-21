@@ -153,7 +153,7 @@ public class Log4JLogger implements ILogger {
 	/**
 	 * Without a log4j2 implementation (a provider, such as log4j-core) the log4j2 API only prints
 	 * errors to the console, after a warning that it found no provider. So BaseObject only uses
-	 * Log4JLogger by default when this is true, and ParleyLogger (which follows the LogLevel and LogFile
+	 * Log4JLogger by default when this is true, and ParleyLogger (which follows the logLevel and logFile
 	 * properties) otherwise.
 	 *
 	 * @return true if the log4j2 API and a log4j2 implementation are both in the class path.

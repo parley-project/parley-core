@@ -18,7 +18,7 @@ import us.bringardner.parley.core.Log4JLogger;
 
 /**
  * BaseObject only uses Log4JLogger by default when a log4j2 implementation (provider) is available.
- * With the log4j2 API alone, log4j2 prints only errors (after a warning) and ignores our LogLevel and LogFile.
+ * With the log4j2 API alone, log4j2 prints only errors (after a warning) and ignores our logLevel and logFile.
  */
 public class TestLog4jProvider {
 
