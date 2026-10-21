@@ -6,10 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import us.bringardner.parley.core.BaseObject;
 
@@ -63,20 +62,16 @@ public class TestPropertyOverrideExample {
 
 	/** A file of the same name higher in the stack (earlier on the class path) with b only. */
 	@Test
-	public void sameNamedFileEarlierOnTheClassPathOverridesOneKey() throws Exception {
-		Path root = Path.of("target", "abc-test").toAbsolutePath();
-		if( Files.exists(root) ) {
-			try(Stream<Path> s = Files.walk(root)) {
-				s.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-			}
-		}
+	public void sameNamedFileEarlierOnTheClassPathOverridesOneKey(@TempDir Path root) throws Exception {
+		System.out.println("TestPropertyOverrideExample files: "+root);
+		String where = "files in "+root;
 		URL library = dir(root, "library", "a = 1\nb = 2\nc = 3\n").toUri().toURL();
 		URL application = dir(root, "application", "b = 10\n").toUri().toURL();
 
-		assertArrayEquals(new String[] {"1", "10", "3"}, load(application, library));
+		assertArrayEquals(new String[] {"1", "10", "3"}, load(application, library), where);
 
 		//  The order of the class path decides, not the name of the package: library first, library wins.
-		assertArrayEquals(new String[] {"1", "2", "3"}, load(library, application));
+		assertArrayEquals(new String[] {"1", "2", "3"}, load(library, application), where);
 	}
 }
 

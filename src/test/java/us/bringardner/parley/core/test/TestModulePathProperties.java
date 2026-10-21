@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import us.bringardner.parley.core.BaseObject;
 
@@ -23,7 +24,7 @@ import us.bringardner.parley.core.BaseObject;
  * Module a.base:  Base extends BaseObject
  * Module b.sub:   Sub extends Base, and Main, which prints the property values
  *
- * Everything is built under target/ (javac, jar and java are the ones running this test).
+ * Everything is built in a temporary directory (javac, jar and java are the ones running this test).
  */
 public class TestModulePathProperties {
 
@@ -42,8 +43,8 @@ public class TestModulePathProperties {
 	private static String run(Path dir, String... cmd) throws Exception {
 		Process p = new ProcessBuilder(cmd).directory(dir.toFile()).redirectErrorStream(true).start();
 		String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-		assertTrue(p.waitFor(120, TimeUnit.SECONDS), "timeout: "+String.join(" ", cmd));
-		assertEquals(0, p.exitValue(), String.join(" ", cmd)+"\n"+out);
+		assertTrue(p.waitFor(120, TimeUnit.SECONDS), "timeout: "+String.join(" ", cmd)+"\nfiles in "+dir);
+		assertEquals(0, p.exitValue(), String.join(" ", cmd)+"\nfiles in "+dir+"\n"+out);
 		return out;
 	}
 
@@ -54,19 +55,12 @@ public class TestModulePathProperties {
 	}
 
 	@Test
-	public void propertiesAreFoundForClassesInNamedModules() throws Exception {
+	public void propertiesAreFoundForClassesInNamedModules(@TempDir Path root) throws Exception {
 		Assumptions.assumeTrue(new File(tool("javac")).exists(), "needs a JDK");
 
 		Path classes = Path.of(BaseObject.class.getProtectionDomain().getCodeSource().getLocation().toURI());
 		Assumptions.assumeTrue(Files.isDirectory(classes), "parley-core must be run from classes");
-
-		Path root = Path.of("target", "jpms-test").toAbsolutePath();
-		if( Files.exists(root) ) {
-			try(var s = Files.walk(root)) {
-				s.sorted(java.util.Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-			}
-		}
-		Files.createDirectories(root);
+		System.out.println("TestModulePathProperties files: "+root);
 
 		// parley-core as an (automatic) module
 		run(root, tool("jar"), "--create", "--file", "parley-core.jar", "-C", classes.toString(), ".");
@@ -93,8 +87,9 @@ public class TestModulePathProperties {
 		String out = run(root, tool("java"), "--module-path", "mods"+File.pathSeparator+"parley-core.jar",
 				"-m", "b.sub/b.sub.Main", "inMetaInf", "baseOnly", "layer", "inPackage");
 
-		assertTrue(out.contains("inMetaInf=base"), "META-INF/parley file of the super class module, not found\n"+out);
-		assertTrue(out.contains("baseOnly=base"), out);
-		assertTrue(out.contains("layer=sub"), "the sub class's file should override the super class's\n"+out);
+		String where = "\nfiles in "+root+"\n"+out;
+		assertTrue(out.contains("inMetaInf=base"), "META-INF/parley file of the super class module, not found"+where);
+		assertTrue(out.contains("baseOnly=base"), where);
+		assertTrue(out.contains("layer=sub"), "the sub class's file should override the super class's"+where);
 	}
 }

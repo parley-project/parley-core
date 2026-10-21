@@ -4,7 +4,7 @@ The core of **Parley**, a family of Java libraries for implementing internet pro
 dependency-free building blocks that the other Parley projects share. It gives you property lookup and logging for any class, threads
 that can be stopped cleanly, a TCP/SSL server and client base, and a few utilities.
 The Swing date and time pickers that used to be here are now a separate library,
-[swing-widgets](https://github.com/tony-bringardner/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
+[swing-widgets](https://github.com/parley-project/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
 
 - **Java 11** or later (virtual threads are used on Java 21+ when you ask for them)
 - **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
@@ -25,7 +25,7 @@ The Swing date and time pickers that used to be here are now a separate library,
 
 ## Getting started
 
-parley-core is published to GitHub Packages (and, once released there, Maven Central):
+parley-core is on Maven Central, so no extra repository is needed:
 
 ```xml
 <dependency>
@@ -34,18 +34,6 @@ parley-core is published to GitHub Packages (and, once released there, Maven Cen
     <version>1.0.0</version>
 </dependency>
 ```
-
-```xml
-<repositories>
-    <repository>
-        <id>github</id>
-        <url>https://maven.pkg.github.com/tony-bringardner/parley-core</url>
-    </repository>
-</repositories>
-```
-
-GitHub Packages needs a token even for public packages. Add a `<server>` with the id `github`
-to `~/.m2/settings.xml` with your GitHub user name and a token that has the `read:packages` scope.
 
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
@@ -85,6 +73,9 @@ public class Mailer extends BaseObject {
 | | `AddressMatcher` | A list of IP addresses and CIDR networks, for allow lists. Never does a DNS lookup. |
 | | `PrivateKeys`, `Pem`, `Der` | Load RSA and EC private keys from PEM files and key stores. |
 | | `Hex` | Hex encoding and decoding. |
+| | `Base32Hex` | Base32 with the extended hex alphabet (RFC 4648), as DNSSEC NSEC3 uses it. |
+| | `Ec` | Elliptic curve helpers: point encoding and checks, and ECDSA signatures between DER and raw (r, s) / r‖s form. |
+| | `RenamedProperty` | Reads a system property under its new name, falling back to an old name (with a one-time deprecation warning). |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
 
 ## Properties
@@ -336,6 +327,8 @@ server socket from these properties (or the matching setters):
 | `KeepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
 | `TcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
 | `MaxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
+| `MaxConnectionsPerClient` | `0` (no limit) | Connections one client address may have at once, so one host can't take every place (`tryAcquireClient(address)`, `tryAcquireConnection(address)`) |
+| `AllowedClients` | everyone | Client addresses and networks allowed to connect, e.g. `127.0.0.1 10.0.0.0/8 ::1` (`isClientAllowed(address)`) |
 | `LoginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
 | `MaxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
 | `LoginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |
@@ -413,7 +406,16 @@ All in `us.bringardner.parley.core.util`.
   Only address literals are accepted, never a host name.
 - **`PrivateKeys`**: `PrivateKeys.load(file, passphrase)` reads RSA and EC (P-256, P-384, P-521) keys
   from PKCS#8 and traditional PEM files, encrypted or not, and from PKCS12 and JKS key stores.
-  `Pem` and `Der` are the readers it is built on.
+  `Pem` and `Der` are the readers it is built on. `PrivateKeys.writePrivateFile(file, text)` creates a
+  new file only its owner can read (POSIX `rw-------`; on Windows the ACL is cut down to the owner),
+  and `PrivateKeys.exposure(file)` says if an existing key file can be read by its group or everyone
+  (`null` when it is private), so a server can warn before using it.
+- **`Ec`**: `encodePoint` / `decodePoint` (with an on-curve check), `signatureToDer` and
+  `signatureFromDer` to convert ECDSA signatures between Java's DER form and the raw r‖s form that
+  DNSSEC, JOSE and SSH use.
+- **`Base32Hex`**: `Base32Hex.encode(bytes)` / `decode(text)`, unpadded, case-insensitive on decode.
+- **`RenamedProperty`**: `RenamedProperty.get("New.name", "Old.name", default)` for properties that
+  were renamed: the new name wins, the old one still works and logs once that it is deprecated.
 - **`Hex`**: `Hex.encode(bytes)`, `Hex.encode(bytes, true, ":")` for fingerprints, `Hex.decode(text)`.
 - **`LogHelper`**: see [What's inside](#whats-inside).
 
@@ -434,13 +436,9 @@ coverage report to `target/site/jacoco/index.html`.
 
 ## Releasing
 
-Set the new version in `pom.xml`, then:
-
-- `mvn clean deploy` publishes to GitHub Packages (a `github` server with a token that has the
-  `write:packages` scope in `~/.m2/settings.xml`).
-- `mvn -Prelease clean deploy` publishes to Maven Central; see
-  [parley-parent](https://github.com/tony-bringardner/parley-parent#releasing) for what that needs.
-
+Set the new version in `pom.xml` (and the parent's, if it changed), then
+`mvn -Prelease clean deploy` publishes to Maven Central; see
+[parley-parent](https://github.com/parley-project/parley-parent#releasing) for what that needs.
 Then tag the release (`v<version>`) and push.
 
 ## License
