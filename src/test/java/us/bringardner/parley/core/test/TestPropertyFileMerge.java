@@ -8,10 +8,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import us.bringardner.parley.core.BaseObject;
 
@@ -54,13 +53,9 @@ public class TestPropertyFileMerge {
 	}
 
 	@Test
-	public void firstFileWinsAndLaterFilesFillIn() throws Exception {
-		Path root = Path.of("target", "merge-test").toAbsolutePath();
-		if( Files.exists(root) ) {
-			try(Stream<Path> s = Files.walk(root)) {
-				s.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-			}
-		}
+	public void firstFileWinsAndLaterFilesFillIn(@TempDir Path root) throws Exception {
+		System.out.println("TestPropertyFileMerge files: "+root);
+		String where = " (files in "+root+")";
 		Path first = root.resolve("first");
 		Path second = root.resolve("second");
 		write(first, "a = first\nb = first\n");
@@ -71,10 +66,10 @@ public class TestPropertyFileMerge {
 			BaseObject o = (BaseObject) loader.loadClass(MergeTarget.class.getName()).getDeclaredConstructor().newInstance();
 			assertEquals(loader, o.getClass().getClassLoader());
 
-			assertEquals("first", o.getProperty("a"));
-			assertEquals("first", o.getProperty("b"), "the first file on the class path wins");
-			assertEquals("second", o.getProperty("c"), "a value only the later file defines is kept");
-			assertNull(o.getProperty("d"));
+			assertEquals("first", o.getProperty("a"), "a"+where);
+			assertEquals("first", o.getProperty("b"), "the first file on the class path wins"+where);
+			assertEquals("second", o.getProperty("c"), "a value only the later file defines is kept"+where);
+			assertNull(o.getProperty("d"), "d"+where);
 		}
 	}
 }
