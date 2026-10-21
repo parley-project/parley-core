@@ -92,7 +92,7 @@ public class TestLoggerCoverage {
 
 	@Test
 	public void testParleyLoggerLevelByName() {
-		System.setProperty("test.parley.named.LogLevel", "debug");
+		System.setProperty("test.parley.named.logLevel", "debug");
 		try {
 			ParleyLogger logger = new ParleyLogger();
 			logger.init("test.parley.named");
@@ -102,7 +102,7 @@ public class TestLoggerCoverage {
 			other.init("");
 			assertEquals(ParleyLogger.DEFAULT_LEVEL, other.getLevel(), "An empty name uses the default level");
 		} finally {
-			System.clearProperty("test.parley.named.LogLevel");
+			System.clearProperty("test.parley.named.logLevel");
 		}
 	}
 

@@ -62,7 +62,7 @@ public class SocketClient extends SecureBaseObject {
 	public static final String PROPERTY_IS_SO_LINGER = SocketOptions.PROPERTY_IS_SO_LINGER;
 
 	/** How long (in milliseconds) {@link #getSocket(String, int)} waits for the connection to be made. */
-	public static final String PROPERTY_CONNECT_TIMEOUT = "ConnectTimeout";
+	public static final String PROPERTY_CONNECT_TIMEOUT = "connectTimeout";
 
 	/**
 	 * 60 seconds. Before this setting existed there was no limit, so an unreachable host
@@ -78,17 +78,17 @@ public class SocketClient extends SecureBaseObject {
 	public static final String PROPERTY_TCP_NO_DELAY = SocketOptions.PROPERTY_TCP_NO_DELAY;
 
 	/** "false" turns off the host name check for secure connections, see {@link #isVerifyHostname()}. */
-	public static final String PROPERTY_VERIFY_HOSTNAME = "VerifyHostname";
+	public static final String PROPERTY_VERIFY_HOSTNAME = "verifyHostname";
 
 
 
-	//  null means the VerifyHostname property has not been read yet
+	//  null means the verifyHostname property has not been read yet
 	private volatile Boolean verifyHostname;
 
 
 	private volatile int connectTimeout=-1;
 
-	//  null means the IsSoLinger property has not been read yet
+	//  null means the isSoLinger property has not been read yet
 
 	//  null means the property has not been read yet
 

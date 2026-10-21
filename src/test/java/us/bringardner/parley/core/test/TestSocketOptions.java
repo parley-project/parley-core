@@ -19,7 +19,7 @@ import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.SocketClient;
 
 /**
- * The KeepAlive and TcpNoDelay settings (server and client) and the server's connection limit.
+ * The keepAlive and tcpNoDelay settings (server and client) and the server's connection limit.
  */
 public class TestSocketOptions {
 

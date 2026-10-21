@@ -1,5 +1,25 @@
 # Changelog
 
+## parley-core 2.0.0 (unreleased)
+
+### Changed (needs a configuration change)
+
+- **Property names are lowerCamel** (Parley 2.0.0 renamed every property; the old names are no longer read).
+  The server, socket and key store settings read with an object's prefix: `Port` is `port`, `BindAddress`
+  `bindAddress`, `Backlog` `backlog`, `AcceptTimeout` `acceptTimeout`, `SocketTimeout` `socketTimeout`,
+  `IsSoLinger` / `SoLinger` `isSoLinger` / `soLinger`, `KeepAlive` `keepAlive`, `TcpNoDelay` `tcpNoDelay`,
+  `MaxConnections` `maxConnections`, `MaxConnectionsPerClient` `maxConnectionsPerClient`, `AllowedClients`
+  `allowedClients`, `LoginFailureDelay` `loginFailureDelay`, `MaxLoginAttempts` `maxLoginAttempts`,
+  `LoginTimeLimit` `loginTimeLimit`, `ConnectTimeout` `connectTimeout`, `VerifyHostname` `verifyHostname`,
+  `KeyStoreName` `keyStoreName`, `KeyStorePassword` `keyStorePassword`, `KeyStoreType` `keyStoreType`,
+  `Algorithm` `algorithm`, `Protocol` `protocol`.
+- Logging: `LogLevel` is `logLevel` (and `<logger name>.logLevel`), `LogFile` `logFile`, `LogFileMaxSize`
+  `logFileMaxSize`, `LogFileCount` `logFileCount`, `LogFlushInterval` `logFlushInterval`; the logger class is
+  named by `parley.core.logger` (was `ILogger`).
+- `us.bringardner.parley.core.virtualThreads` is `parley.core.virtualThreads`; `ForceTlsVersion` is
+  `parley.core.forceTlsVersion`.
+- `BaseObject.getPropertyPrefix()` is public (servers expose their prefix through `IServer`).
+
 ## parley-core 1.1.0 (unreleased)
 
 No changes yet.

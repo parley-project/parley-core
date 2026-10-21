@@ -16,7 +16,7 @@ public class TestApiCompatibility {
 
 	@Test
 	public void forceTlsVersionPropertyName() {
-		assertEquals("ForceTlsVersion", SecureBaseObject.PROPERTY_FORCE_TLS_VERSION);
+		assertEquals("parley.core.forceTlsVersion", SecureBaseObject.PROPERTY_FORCE_TLS_VERSION);
 	}
 
 	static class Worker extends BaseThread {

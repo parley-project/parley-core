@@ -31,22 +31,22 @@ import us.bringardner.parley.core.BaseObject;
  */
 public final class SocketOptions {
 
-	public static final String PROPERTY_SOCKET_TIMEOUT = "SocketTimeout";
+	public static final String PROPERTY_SOCKET_TIMEOUT = "socketTimeout";
 	public static final int DEFAULT_SOCKET_TIMEOUT = 60000;
 
-	public static final String PROPERTY_SO_LINGER = "SoLinger";
+	public static final String PROPERTY_SO_LINGER = "soLinger";
 	/**
 	 * SO_LINGER is in SECONDS (see Socket.setSoLinger).
 	 * This was 60000 (almost 17 hours) which could block Socket.close() for a very long time.
 	 */
 	public static final int DEFAULT_SO_LINGER = 10;
-	public static final String PROPERTY_IS_SO_LINGER = "IsSoLinger";
+	public static final String PROPERTY_IS_SO_LINGER = "isSoLinger";
 
 	/** "true" turns on SO_KEEPALIVE, so a peer that disappears is detected. Default false. */
-	public static final String PROPERTY_KEEP_ALIVE = "KeepAlive";
+	public static final String PROPERTY_KEEP_ALIVE = "keepAlive";
 
 	/** "true" turns on TCP_NODELAY (no Nagle delay). Default false. */
-	public static final String PROPERTY_TCP_NO_DELAY = "TcpNoDelay";
+	public static final String PROPERTY_TCP_NO_DELAY = "tcpNoDelay";
 
 	private final BaseObject properties;
 

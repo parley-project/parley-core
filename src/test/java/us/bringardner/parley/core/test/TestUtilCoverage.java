@@ -203,7 +203,7 @@ public class TestUtilCoverage {
 			RecordingLogger rec = new RecordingLogger();
 			bad.setLogger(rec);
 			assertThrows(IllegalStateException.class, bad::getBindAddr);
-			assertTrue(rec.messages.get(0).startsWith("ERROR Cannot create BindAddress"), "The error should be logged");
+			assertTrue(rec.messages.get(0).startsWith("ERROR Cannot create bindAddress"), "The error should be logged");
 		} finally {
 			System.clearProperty(linger);
 			System.clearProperty(bind);

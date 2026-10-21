@@ -115,7 +115,7 @@ public class TestParleyLoggerFile {
 				ParleyLogger.PROPERTY_LOG_FILE_MAX_SIZE, "4KB",
 				ParleyLogger.PROPERTY_LOG_FILE_COUNT, "0"));
 		logger.error("first");
-		//  With LogFileCount 0 no old file is kept
+		//  With logFileCount 0 no old file is kept
 		assertEquals(1, dir.list().length);
 		assertTrue(log.length() < 1000, "The old content was removed, the file is "+log.length()+" bytes");
 		assertEquals(1, lines(log).size());
@@ -290,7 +290,7 @@ public class TestParleyLoggerFile {
 		assertEquals(List.of("after"), messages(log));
 	}
 
-	// ---------------- timestamp and LogFlushInterval ----------------
+	// ---------------- timestamp and logFlushInterval ----------------
 
 	private static final java.util.regex.Pattern STAMP = java.util.regex.Pattern.compile(
 			"^(\\d\\d)-(\\d\\d)-(\\d{4}) (\\d\\d):(\\d\\d):(\\d\\d)\\.(\\d{3}) \\[");

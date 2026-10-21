@@ -53,7 +53,7 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	 * so nothing changes unless you ask for it), "true", or "auto" (virtual threads on Java 24
 	 * and later), see {@link #isVirtualDefault()}.
 	 */
-	public static final String VIRTUAL_THREADS_PROPERTY = "us.bringardner.parley.core.virtualThreads";
+	public static final String VIRTUAL_THREADS_PROPERTY = "parley.core.virtualThreads";
 
 	/** null = the default ({@link #isVirtualDefault()}), else what the caller asked for. */
 	private volatile Boolean virtual;
