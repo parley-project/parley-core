@@ -9,7 +9,7 @@ import us.bringardner.parley.core.BaseObject;
 
 /**
  * Property lookups use strings worked out once per class (and per property name). These tests make sure
- * that doesn't change what is found: more names than are kept, a changed prefix, no prefix, a
+ * that doesn't change what is found: many names, propertyName with a changed prefix or none, a
  * getPropertyClass() override and a cleared cache.
  */
 public class TestPropertyLookupPlan {
@@ -57,38 +57,29 @@ public class TestPropertyLookupPlan {
 	}
 
 	@Test
-	public void superClassNameIsAPrefixForSubClassObjects() {
+	public void namesAreNotPrefixed() {
 		System.setProperty(A_NAME+".timeout", "5");
 		try {
-			assertEquals("5", new B().getProperty("timeout"));
-			System.setProperty(B_NAME+".timeout", "7");
-			assertEquals("7", new B().getProperty("timeout"), "the object's own class name wins over a super class's");
+			assertNull(new B().getProperty("timeout"), "getProperty adds nothing to the name");
+			assertEquals("5", new B().getProperty(A_NAME+".timeout"));
+			assertEquals(B_NAME+".timeout", new B().propertyName("timeout"));
 		} finally {
 			System.clearProperty(A_NAME+".timeout");
-			System.clearProperty(B_NAME+".timeout");
 		}
 	}
 
 	@Test
-	public void changedPrefixWinsAndClassNamesStillApply() {
+	public void changedPrefixChangesPropertyName() {
 		B b = new B();
 		b.prefix("custom");
 		System.setProperty("custom.size", "1");
-		System.setProperty(A_NAME+".size", "2");
 		try {
-			assertEquals("1", b.getProperty("size"));
-			System.clearProperty("custom.size");
-			assertEquals("2", b.getProperty("size"), "without the custom prefixed value the class names are searched");
+			assertEquals("custom.size", b.propertyName("size"));
+			assertEquals("1", b.getProperty(b.propertyName("size")));
+			//  another object of the same class is not affected by this one's prefix
+			assertEquals(B_NAME+".size", new B().propertyName("size"));
 		} finally {
 			System.clearProperty("custom.size");
-			System.clearProperty(A_NAME+".size");
-		}
-		//  another object of the same class is not affected by this one's prefix
-		System.setProperty(B_NAME+".size", "3");
-		try {
-			assertEquals("3", new B().getProperty("size"));
-		} finally {
-			System.clearProperty(B_NAME+".size");
 		}
 	}
 
@@ -96,9 +87,10 @@ public class TestPropertyLookupPlan {
 	public void noPrefixSearchesOnlyTheName() {
 		B b = new B();
 		b.setSupportPrefixProperty(false);
+		assertEquals("mode", b.propertyName("mode"));
 		System.setProperty(B_NAME+".mode", "prefixed");
 		try {
-			assertNull(b.getProperty("mode"));
+			assertNull(b.getProperty(b.propertyName("mode")));
 			System.setProperty("mode", "plain");
 			assertEquals("plain", b.getProperty("mode"));
 		} finally {
@@ -113,8 +105,9 @@ public class TestPropertyLookupPlan {
 		SearchesB o = new SearchesB();
 		System.setProperty(A_NAME+".where", "super of B");
 		try {
-			//  the search starts at B, so A's name is one of its prefixes
-			assertEquals("super of B", o.getProperty("where"));
+			//  the name is looked up as it is given
+			assertEquals("super of B", o.getProperty(A_NAME+".where"));
+			assertNull(o.getProperty("where"));
 		} finally {
 			System.clearProperty(A_NAME+".where");
 		}

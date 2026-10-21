@@ -4,6 +4,13 @@
 
 ### Changed (needs a configuration change)
 
+- **`getProperty(name)` looks up exactly the name it is given**: the system property, then the properties
+  files of the class and its super classes. It no longer adds the object's prefix or class names to the name,
+  and no longer falls back to the name alone. A class whose settings share a prefix builds the full name with
+  the new `propertyName(name)` (prefix, a dot and the name): `AbstractCoreServer`, `SecureBaseObject`,
+  `SocketClient` and `SocketOptions` read `<prefix>.port`, `<prefix>.keyStoreName` ... that way, so `-Dport=...`
+  no longer applies to every server. `ParleyLogger` reads `logLevel`, `<logger name>.logLevel`, `logFile` ...
+  by those names only (`us.bringardner.parley.core.ParleyLogger.logFile` is no longer read).
 - **Property names are lowerCamel** (Parley 2.0.0 renamed every property; the old names are no longer read).
   The server, socket and key store settings read with an object's prefix: `Port` is `port`, `BindAddress`
   `bindAddress`, `Backlog` `backlog`, `AcceptTimeout` `acceptTimeout`, `SocketTimeout` `socketTimeout`,

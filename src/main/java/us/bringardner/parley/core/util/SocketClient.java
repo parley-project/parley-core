@@ -149,7 +149,7 @@ public class SocketClient extends SecureBaseObject {
 	public boolean isVerifyHostname() {
 		Boolean ret = verifyHostname;
 		if( ret == null ) {
-			ret = getBooleanProperty(PROPERTY_VERIFY_HOSTNAME, true);
+			ret = getBooleanProperty(propertyName(PROPERTY_VERIFY_HOSTNAME), true);
 			verifyHostname = ret;
 		}
 		return ret;
@@ -255,7 +255,7 @@ public class SocketClient extends SecureBaseObject {
 		if( connectTimeout < 0 ) {
 			synchronized(this) {
 				if( connectTimeout < 0 ) {
-					connectTimeout = getIntProperty(PROPERTY_CONNECT_TIMEOUT, DEFAULT_CONNECT_TIMEOUT);
+					connectTimeout = getIntProperty(propertyName(PROPERTY_CONNECT_TIMEOUT), DEFAULT_CONNECT_TIMEOUT);
 				}
 			}
 		}

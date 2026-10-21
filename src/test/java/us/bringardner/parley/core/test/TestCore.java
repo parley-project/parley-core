@@ -790,6 +790,10 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 
 		//  port 0 = use any free port, so the test can't fail because a fixed port is in use.
 		AbstractCoreServer svr = new AbstractCoreServer(0,useSSL) {
+			{
+				//  the key store settings are in TestCore.properties by their names alone
+				setSupportPrefixProperty(false);
+			}
 			Socket socket = null;
 			InputStream in = null;
 			OutputStream out = null;

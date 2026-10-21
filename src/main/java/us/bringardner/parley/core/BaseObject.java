@@ -149,7 +149,7 @@ public class BaseObject {
 	}
 
 	/**
-	 * propertyPrefix provides a "search path" for properties.
+	 * The prefix of this object's settings, see {@link #propertyName(String)}.
 	 */
 	private volatile String propertyPrefix;
 
@@ -166,12 +166,12 @@ public class BaseObject {
 
 
 	/**
-	 * The propertyPrefix is used when searching for properties.
-	 * The default is the Class name of this Object.
+	 * The prefix of this object's settings, which {@link #propertyName(String)} puts in front of a
+	 * setting's name. The default is the class name of this object. getProperty doesn't use it: it
+	 * looks up the name it is given.
 	 *  
-	 * @return the propertyPrefix for this Object
-	 * @see #getProperty(String)
-	 * @see #getProperty(String, String)
+	 * @return the property prefix for this Object, or null when it isn't used
+	 * @see #propertyName(String)
 	 * @see #isSupportPrefixProperty()
 	 */
 	public String getPropertyPrefix() {
@@ -191,16 +191,30 @@ public class BaseObject {
 	}
 
 	/**
-	 * Set the propertyPrefix used when searching for properties.
-	 * The default is the Class name of this Object.
+	 * Set the prefix of this object's settings (see {@link #propertyName(String)}).
+	 * The default is the class name of this object.
 	 *   
 	 * @param propertyPrefix
-	 * @see BaseObject#getProperty(String)
-	 * @see #getProperty(String, String)
+	 * @see #propertyName(String)
 	 * @see #isSupportPrefixProperty()
 	 */
 	protected void setPropertyPrefix(String propertyPrefix) {
 		this.propertyPrefix = propertyPrefix;
+	}
+
+	/**
+	 * The full name of one of this object's settings: its property prefix, a dot and the name
+	 * (<code>parley.mail.pop3</code> and <code>port</code> make <code>parley.mail.pop3.port</code>), or the
+	 * name alone when the prefix isn't used (see {@link #setSupportPrefixProperty(boolean)}).
+	 * {@link #getProperty(String)} looks up the name it is given as it is, so a class whose settings
+	 * share its prefix asks for <code>getProperty(propertyName("port"))</code>.
+	 *
+	 * @param name the setting's name, without the prefix
+	 * @return the full name to look up
+	 */
+	public String propertyName(String name) {
+		String prefix = getPropertyPrefix();
+		return prefix == null || prefix.isEmpty() ? name : prefix+"."+name;
 	}
 
 
@@ -361,18 +375,17 @@ public class BaseObject {
 	}
 
 	/**
-	 * Find a property. The first value found is returned:
+	 * Find a property by exactly the name given: nothing is added to it. The first value found is
+	 * returned:
 	 * <ol>
-	 * <li>The system property <code>prefix.propertyName</code>, where the prefix is the class name
-	 *     (see {@link #getPropertyPrefix()} and {@link #setSupportPrefixProperty(boolean)}),
-	 *     then <code>superClassName.propertyName</code> for each super class up to (not including) BaseObject.</li>
 	 * <li>The system property <code>propertyName</code>.</li>
 	 * <li>The properties file named after the class (for example <code>/com/example/Mailer.properties</code>),
-	 *     checking <code>prefix.propertyName</code>, <code>className.propertyName</code> (the class the file
-	 *     belongs to) then <code>propertyName</code>. Then the properties
-	 *     files of each super class, up to (not including) BaseObject. Inner classes use the file of
-	 *     their outer class.</li>
+	 *     then the properties files of each super class, up to (not including) BaseObject. Inner classes
+	 *     use the file of their outer class.</li>
 	 * </ol>
+	 * A class whose settings share a prefix (a server's <code>parley.mail.pop3</code>) builds the full name
+	 * itself, for example with {@link #propertyName(String)}.
+	 * <p>
 	 * Properties files are cached, see {@link #setMaxProperties(int)} and {@link #clearPropertyCache()}.
 	 * <p>
 	 * A class in a named module (module path) can't have its <code>/pkg/Name.properties</code> read unless the
@@ -381,7 +394,7 @@ public class BaseObject {
 	 * package, so a file can't be replaced by an extending class there: use system properties, or the file of
 	 * the extending class.
 	 *
-	 * @param propertyName Name of the property
+	 * @param propertyName the full name of the property
 	 * @return the value of the property, or null if it is not defined.
 	 */
 	public String getProperty(String propertyName) {
@@ -390,15 +403,15 @@ public class BaseObject {
 
 
 	/**
-	 * 
-	 * @return
+	 * @return true if {@link #propertyName(String)} puts the property prefix in front of a name (the default)
 	 */
 	public boolean isSupportPrefixProperty() {
 		return supportPrefixProperty;
 	}
 
 	/**
-	 * Enable property logic
+	 * Whether {@link #propertyName(String)} uses the property prefix (true, the default) or gives the
+	 * name alone.
 	 * @param supportPrefixProperty
 	 */
 	public void setSupportPrefixProperty(boolean supportPrefixProperty) {
@@ -409,7 +422,7 @@ public class BaseObject {
 	/**
 	 * Everything {@link #getProperty(String, String)} needs to know about a class that doesn't depend on
 	 * the property being looked up: the classes searched (the class, then its super classes up to
-	 * BaseObject), their properties file names and cache keys, and the "className." prefixes. Computed
+	 * BaseObject), and their properties file names and cache keys. Computed
 	 * once per class, so a lookup doesn't build any of these strings again.
 	 * <p>
 	 * It holds only strings and the classes themselves (a super class can't be unloaded before its
@@ -417,21 +430,14 @@ public class BaseObject {
 	 * {@link BaseObject#clearPropertyCache()} and {@link BaseObject#setMaxProperties(int)} work as before.
 	 */
 	private static final class LookupPlan {
-		/** Property names whose key strings are kept, so names made up at run time can't grow the map without limit. */
-		private static final int MAX_NAMES = 128;
-
 		private final Class<?> start;
 		private final Class<?>[] classes;
-		private final String[] levelPrefix;
 		private final String[] fn;
 		private final String[] keyViaStart;
 		private final String[] keyViaClass;
 		private final boolean[] sameSource;
 		private final String[] metaFn;
 		private final String[] metaKey;
-		/** The default property prefix of an object of this class, its name. */
-		private final String defaultPrefix;
-		private final ConcurrentHashMap<String, String[]> keys = new ConcurrentHashMap<>();
 
 		LookupPlan(Class<?> start) {
 			this.start = start;
@@ -441,7 +447,6 @@ public class BaseObject {
 			}
 			int n = chain.size();
 			classes = chain.toArray(new Class<?>[n]);
-			levelPrefix = new String[n];
 			fn = new String[n];
 			keyViaStart = new String[n];
 			keyViaClass = new String[n];
@@ -458,7 +463,6 @@ public class BaseObject {
 					name = name.substring(0, idx);
 				}
 				String path = name.length() > 0 ? "/"+name.replace('.', '/') : name;
-				levelPrefix[i] = full+".";
 				fn[i] = path+".properties";
 				keyViaStart[i] = cacheKey(start, fn[i]);
 				keyViaClass[i] = cacheKey(c, fn[i]);
@@ -466,22 +470,6 @@ public class BaseObject {
 				metaFn[i] = META_INF_DIR+name+".properties";
 				metaKey[i] = cacheKey(c, metaFn[i]);
 			}
-			defaultPrefix = start.getName();
-		}
-
-		/** @return for each class searched, "className.propertyName" */
-		String[] keys(String propertyName) {
-			String[] ret = keys.get(propertyName);
-			if( ret == null ) {
-				ret = new String[levelPrefix.length];
-				for(int i = 0; i < ret.length; i++) {
-					ret[i] = levelPrefix[i]+propertyName;
-				}
-				if( keys.size() < MAX_NAMES ) {
-					keys.putIfAbsent(propertyName, ret);
-				}
-			}
-			return ret;
 		}
 
 		/** The same places, in the same order, as {@link BaseObject#getPropertyEntry(Class, String)}. */
@@ -535,44 +523,14 @@ public class BaseObject {
 
 	/**
 	 * {@link #getProperty(String, String)} for an object that searches its own class, which is nearly
-	 * always: the strings that depend only on the class come from its {@link LookupPlan}, so nothing
-	 * is built here unless the property prefix has been changed.
+	 * always: the properties files to search come from its {@link LookupPlan}.
 	 */
 	private String findProperty(LookupPlan plan, String propertyName) {
-		String prefix = getPropertyPrefix();
-		String[] keys = plan.keys(propertyName);
-		String prefixed = null;
-		if( prefix != null ) {
-			prefixed = keys.length > 0 && prefix.equals(plan.defaultPrefix) ? keys[0] : prefix+"."+propertyName;
-		}
-
-		String ret = null;
-		if( prefixed != null ) {
-			ret = System.getProperty(prefixed);
-			//  The class name of each level is a prefix too, so a property set for a super class
-			//  (-Dcom.foo.Base.timeout=5) also applies to its sub classes.
-			for(int i = 0; ret == null && i < keys.length; i++) {
-				if( keys[i] != prefixed && !keys[i].equals(prefixed) ) {
-					ret = System.getProperty(keys[i]);
-				}
-			}
-		}
-		if( ret == null ) {
-			ret = System.getProperty(propertyName);
-		}
-		for(int i = 0; ret == null && i < keys.length; i++) {
+		String ret = System.getProperty(propertyName);
+		for(int i = 0; ret == null && i < plan.classes.length; i++) {
 			Properties p = plan.entry(i);
 			if( p != MISSING ) {
-				if( prefixed != null ) {
-					ret = p.getProperty(prefixed);
-					if( ret == null && keys[i] != prefixed && !keys[i].equals(prefixed) ) {
-						//  the class whose file this is, even when this object is a sub class of it
-						ret = p.getProperty(keys[i]);
-					}
-				}
-				if( ret == null ) {
-					ret = p.getProperty(propertyName);
-				}
+				ret = p.getProperty(propertyName);
 			}
 		}
 		return ret;
@@ -580,57 +538,18 @@ public class BaseObject {
 
 	/** The search for an object whose {@link #getPropertyClass()} is not its own class. */
 	private String findPropertyOf(Class<?> start, String propertyName) {
-		String ret = null;
-		
-		String prefix = getPropertyPrefix();
-		//  Built once, it is looked up in the system properties and in every class's properties file
-		String prefixed = prefix == null ? null : prefix+"."+propertyName;
-
-		if( prefixed!=null ) {
-			ret = System.getProperty(prefixed);
-			//  The class name of each level is a prefix too, so a property set for a super class
-			//  (-Dcom.foo.Base.timeout=5) also applies to its sub classes.
-			for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
-				String levelPrefixed = cls.getName()+"."+propertyName;
-				if( !levelPrefixed.equals(prefixed) ) {
-					ret = System.getProperty(levelPrefixed);
-				}
+		String ret = System.getProperty(propertyName);
+		for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
+			String path = cls.getName();
+			int idx = path.indexOf('$');
+			if( idx > 0) {
+				path = path.substring(0,idx);
+			}
+			Properties p = getPropertyEntry(cls, path);
+			if( p != null && p != MISSING ) {
+				ret = p.getProperty(propertyName);
 			}
 		}
-		
-		if( ret == null ) {
-			ret = System.getProperty(propertyName);
-		}
-
-		if( ret == null ) {
-
-			Class<?> cls = start;
-			while(ret == null && cls != null && cls != BaseObject.class) {
-				String path = cls.getName();
-				int idx = path.indexOf('$');
-				if( idx > 0) {
-					path = path.substring(0,idx);
-				}
-				Properties p = getPropertyEntry(cls, path);
-				if( p != null && p != MISSING ) {
-					if( prefixed!=null ) {
-						ret = p.getProperty(prefixed);
-						if( ret == null ) {
-							//  the class whose file this is, even when this object is a sub class of it
-							String levelPrefixed = cls.getName()+"."+propertyName;
-							if( !levelPrefixed.equals(prefixed) ) {
-								ret = p.getProperty(levelPrefixed);
-							}
-						}
-					}
-					if(ret==null) {
-						ret = p.getProperty(propertyName);
-					}
-				}
-				cls = cls.getSuperclass();
-			}
-		}
-
 		return ret;
 	}
 

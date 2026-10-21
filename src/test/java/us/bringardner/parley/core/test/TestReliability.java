@@ -101,7 +101,7 @@ public class TestReliability {
 		file.deleteOnExit();
 		Files.write(file.toPath(), "existing line\n".getBytes());
 
-		String key = "us.bringardner.parley.core.ParleyLogger." + ParleyLogger.PROPERTY_LOG_FILE;
+		String key = ParleyLogger.PROPERTY_LOG_FILE;
 		System.setProperty(key, file.getAbsolutePath());
 		try {
 			ParleyLogger one = new ParleyLogger();

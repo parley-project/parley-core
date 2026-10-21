@@ -227,16 +227,21 @@ public class TestUtilCoverage {
 		LogHelper forClass = new LogHelper(TestCore.class);
 		assertEquals("1", forClass.getProperty("Value01"));
 
-		//  System properties with the class name (or the name) as the prefix
+		//  The class name (or the name) is the prefix propertyName puts in front of a name
 		String key = TestUtilCoverage.class.getName()+".LogHelperValue";
 		System.setProperty(key, "fromPrefix");
 		try {
-			assertEquals("fromPrefix", new LogHelper(TestUtilCoverage.class).getProperty("LogHelperValue"));
-			assertEquals("fromPrefix", new LogHelper(TestUtilCoverage.class.getName()).getProperty("LogHelperValue"));
+			LogHelper byClass = new LogHelper(TestUtilCoverage.class);
+			assertEquals(key, byClass.propertyName("LogHelperValue"));
+			assertEquals("fromPrefix", byClass.getProperty(byClass.propertyName("LogHelperValue")));
+			LogHelper byName = new LogHelper(TestUtilCoverage.class.getName());
+			assertEquals("fromPrefix", byName.getProperty(byName.propertyName("LogHelperValue")));
+			assertNull(byClass.getProperty("LogHelperValue"), "getProperty doesn't add the prefix");
 		} finally {
 			System.clearProperty(key);
 		}
-		assertNull(new LogHelper("no.such.Name").getProperty("LogHelperValue"));
+		LogHelper other = new LogHelper("no.such.Name");
+		assertNull(other.getProperty(other.propertyName("LogHelperValue")));
 	}
 
 }

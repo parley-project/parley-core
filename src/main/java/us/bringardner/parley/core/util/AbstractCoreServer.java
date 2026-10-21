@@ -265,7 +265,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( backlog < 0 ) {
 			synchronized(this) {
 				if( backlog < 0 ) {
-					backlog = getIntProperty(PROPERTY_BACKLOG,DEFAULT_BACKLOG);
+					backlog = getIntProperty(propertyName(PROPERTY_BACKLOG),DEFAULT_BACKLOG);
 				}
 			}
 		}
@@ -293,7 +293,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( !bindAddrConfigured ) {
 			synchronized (this) {
 				if( !bindAddrConfigured ) {
-					String tmp = getProperty(PROPERTY_BIND_ADDRESS);
+					String tmp = getProperty(propertyName(PROPERTY_BIND_ADDRESS));
 					if( tmp != null ) {
 						try {
 							bindAddr = InetAddress.getByName(tmp.trim());
@@ -437,7 +437,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 */
 	public int getPort() {
 		if( port == -1 ) {
-			port = getIntProperty(PROPERTY_PORT,DEFAULT_PORT);
+			port = getIntProperty(propertyName(PROPERTY_PORT),DEFAULT_PORT);
 		}
 		return port;
 	}
@@ -468,7 +468,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( maxConnections < 0 ) {
 			synchronized(this) {
 				if( maxConnections < 0 ) {
-					maxConnections = getIntProperty(PROPERTY_MAX_CONNECTIONS, DEFAULT_MAX_CONNECTIONS);
+					maxConnections = getIntProperty(propertyName(PROPERTY_MAX_CONNECTIONS), DEFAULT_MAX_CONNECTIONS);
 				}
 			}
 		}
@@ -537,7 +537,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( maxConnectionsPerClient < 0 ) {
 			synchronized(this) {
 				if( maxConnectionsPerClient < 0 ) {
-					maxConnectionsPerClient = Math.max(0, getIntProperty(PROPERTY_MAX_CONNECTIONS_PER_CLIENT, DEFAULT_MAX_CONNECTIONS_PER_CLIENT));
+					maxConnectionsPerClient = Math.max(0, getIntProperty(propertyName(PROPERTY_MAX_CONNECTIONS_PER_CLIENT), DEFAULT_MAX_CONNECTIONS_PER_CLIENT));
 				}
 			}
 		}
@@ -561,7 +561,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( ret == null ) {
 			synchronized(this) {
 				if( allowedClients == null ) {
-					String tmp = getProperty(PROPERTY_ALLOWED_CLIENTS);
+					String tmp = getProperty(propertyName(PROPERTY_ALLOWED_CLIENTS));
 					allowedClients = tmp == null || tmp.trim().isEmpty() ? AddressMatcher.NONE : AddressMatcher.parse(tmp);
 				}
 				ret = allowedClients;
@@ -667,7 +667,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( loginFailureDelay < 0 ) {
 			synchronized(this) {
 				if( loginFailureDelay < 0 ) {
-					loginFailureDelay = Math.max(0, getIntProperty(PROPERTY_LOGIN_FAILURE_DELAY, getDefaultLoginFailureDelay()));
+					loginFailureDelay = Math.max(0, getIntProperty(propertyName(PROPERTY_LOGIN_FAILURE_DELAY), getDefaultLoginFailureDelay()));
 				}
 			}
 		}
@@ -701,7 +701,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( maxLoginAttempts < 0 ) {
 			synchronized(this) {
 				if( maxLoginAttempts < 0 ) {
-					maxLoginAttempts = Math.max(1, getIntProperty(PROPERTY_MAX_LOGIN_ATTEMPTS, getDefaultMaxLoginAttempts()));
+					maxLoginAttempts = Math.max(1, getIntProperty(propertyName(PROPERTY_MAX_LOGIN_ATTEMPTS), getDefaultMaxLoginAttempts()));
 				}
 			}
 		}
@@ -742,7 +742,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( loginTimeLimit < 0 ) {
 			synchronized(this) {
 				if( loginTimeLimit < 0 ) {
-					loginTimeLimit = Math.max(0, getIntProperty(PROPERTY_LOGIN_TIME_LIMIT, getDefaultLoginTimeLimit()));
+					loginTimeLimit = Math.max(0, getIntProperty(propertyName(PROPERTY_LOGIN_TIME_LIMIT), getDefaultLoginTimeLimit()));
 				}
 			}
 		}
@@ -783,7 +783,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( acceptTimeout < 0 ) {
 			synchronized(this) {
 				if(acceptTimeout < 0 ) {
-					acceptTimeout = getIntProperty(PROPERTY_ACCEPT_TIMEOUT, DEFAULT_ACCEPT_TIMEOUT);
+					acceptTimeout = getIntProperty(propertyName(PROPERTY_ACCEPT_TIMEOUT), DEFAULT_ACCEPT_TIMEOUT);
 				}
 			}
 		}

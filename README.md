@@ -91,16 +91,14 @@ The layers, from weakest to strongest:
 
 ### Search order
 
-`getProperty(name)` returns the first value it finds, looking in this order:
+`getProperty(name)` looks up exactly the name it is given; it never adds anything to it. It returns the
+first value it finds, looking in this order:
 
-1. System property `<prefix>.<name>`. The prefix is the class name of the object (see
-   [Changing the prefix](#changing-the-prefix)). Then `<super class name>.<name>` for each super class,
-   up to (not including) `BaseObject`.
-2. System property `<name>`.
-3. For the object's class, then each super class up to (not including) `BaseObject`, the properties file
-   `/<package path>/<ClassName>.properties`, checking `<prefix>.<name>`, `<that class name>.<name>`
-   and then `<name>`. Inner and anonymous classes use their outer class's file.
-4. The default value, or `null`.
+1. The system property `<name>`.
+2. For the object's class, then each super class up to (not including) `BaseObject`, the properties file
+   `/<package path>/<ClassName>.properties`, checking `<name>`. Inner and anonymous classes use their
+   outer class's file.
+3. The default value, or `null`.
 
 Values are only the text found (`getProperty` does not trim or interpret it). An empty value
 (`SmtpHost=`) is a value, so it stops the search.
@@ -146,20 +144,33 @@ What each object sees:
 | `new BulkMailer().getProperty("SmtpHost")` | nothing else | `bulk.example.com` (BulkMailer.properties wins over Mailer.properties) |
 | `new BulkMailer().getIntProperty("SmtpPort", 25)` | nothing else | `587` (BulkMailer has no file entry, Mailer.properties is next) |
 | `new Mailer().getProperty("Retries", "3")` | not defined anywhere | `3` (the default) |
-| `new Mailer().getProperty("SmtpHost")` | `-Dcom.example.Mailer.SmtpHost=relay` | `relay` (a system property beats the file) |
-| `new BulkMailer().getProperty("SmtpHost")` | `-Dcom.example.Mailer.SmtpHost=relay` | `relay` (a property for a super class also applies to its sub classes) |
-| `new BulkMailer().getProperty("SmtpHost")` | the line above, and `-Dcom.example.BulkMailer.SmtpHost=bulk-relay` | `bulk-relay` (the object's own class name is looked up first) |
-| any `BaseObject` | `-DSmtpHost=other` | `other` for every class that asks for `SmtpHost` |
+| `new Mailer().getProperty("SmtpHost")` | `-DSmtpHost=relay` | `relay` (a system property beats the file) |
+| `new Mailer().getProperty("SmtpHost")` | `-Dcom.example.Mailer.SmtpHost=relay` | `mail.example.com` (that is another name) |
 
-A properties file may also use the class name form, `com.example.Mailer.SmtpHost = ...`. It is looked up
-before the plain `SmtpHost`, so a file can hold a general value and a more specific one for its class.
+### Names with a prefix
 
-### Which form to use for a system property
+Since `getProperty` adds nothing to a name, a class whose settings share a prefix builds the full name
+itself. `propertyName(name)` puts the object's property prefix (its class name, unless
+`setPropertyPrefix(...)` set another one) and a dot in front of the name. Parley's servers work this way:
+a POP3 server's prefix is `parley.mail.pop3`, so it reads its port with
+`getIntProperty(propertyName("port"), 110)`, that is `parley.mail.pop3.port`. Several instances of one
+class get different settings by having different prefixes:
 
-- `-Dcom.example.Mailer.SmtpHost=...` sets it for one class and its sub classes. Use this one.
-- `-DSmtpHost=...` sets it for **every** `BaseObject` that asks for that name, and it also beats a
-  class-specific value in a properties file. Use it for settings that really are global, and pick names
-  that won't collide with JVM properties such as `user.dir`.
+```java
+public class Database extends BaseObject {
+
+    public Database(String name) {
+        setPropertyPrefix(name);            // "primary", "reports", ...
+    }
+
+    String url() {
+        return getProperty(propertyName("Url"));   // -Dprimary.Url=..., or "primary.Url = ..." in Database.properties
+    }
+}
+```
+
+`setSupportPrefixProperty(false)` makes `propertyName(name)` give the name alone. `getPropertyClass()`
+(protected) names the class whose files are searched, the object's own class by default.
 
 System properties are read on every call, so they can be changed while the program runs. Properties
 files are cached (see [Caching](#caching)).
@@ -170,28 +181,6 @@ files are cached (see [Caching](#caching)).
   to `System.err` and returns the default.
 - `getBooleanProperty(name, default)` is true only for `true` (any case, surrounding spaces ignored).
   Any other value is false, the default is used when the property isn't defined.
-
-### Changing the prefix
-
-An object's prefix is its class name. In a sub class, `setPropertyPrefix(...)` (protected) uses a
-different one, which is how several instances of one class get different settings:
-
-```java
-public class Database extends BaseObject {
-
-    public Database(String name) {
-        setPropertyPrefix(name);            // "primary", "reports", ...
-    }
-
-    String url() {
-        return getProperty("Url");          // -Dprimary.Url=..., or "primary.Url = ..." in Database.properties
-    }
-}
-```
-
-`setSupportPrefixProperty(false)` turns off the prefixed lookups completely for one object (only
-`<name>` is used). `getPropertyClass()` (protected) names the class whose files are searched, the
-object's own class by default.
 
 ### Where the files can be
 
@@ -237,8 +226,7 @@ logger. `BaseObject.findLogger(name)` returns the logger for any name, and
 ### ParleyLogger
 
 The built-in logger writes `MM-dd-yyyy HH:mm:ss.SSS [thread] LEVEL name - message` lines.
-It is configured with properties (see [Properties](#properties); the class name prefix is
-`us.bringardner.parley.core.ParleyLogger`):
+It is configured with these properties, by these names (see [Properties](#properties)):
 
 | Property | Meaning |
 |---|---|
@@ -314,7 +302,9 @@ parley-core is a multi-release jar. On Java 21 and later a `BaseThread` can run 
 ### Servers
 
 `AbstractCoreServer` is a `BaseThread` for servers. `getServerSocket()` creates a plain or SSL
-server socket from these properties (or the matching setters):
+server socket from these properties (or the matching setters). Each name is read with the server's
+prefix, `propertyName(name)`: `<prefix>.port` and so on, the class name unless the server sets another
+prefix (a POP3 server's is `parley.mail.pop3`):
 
 | Property | Default | Meaning |
 |---|---|---|
@@ -373,7 +363,8 @@ socket configured with the same `socketTimeout`, `isSoLinger`, `soLinger`, `keep
 ## SSL
 
 `SecureBaseObject` (and so `BaseThread`, `AbstractCoreServer` and `SocketClient`) builds an
-`SSLContext` from these properties, or the matching setters:
+`SSLContext` from these properties, read with the object's prefix (`<prefix>.keyStoreName` ...), or the
+matching setters:
 
 | Property | Meaning |
 |---|---|
@@ -388,7 +379,7 @@ Trust managers can be set per object with `setTrustManagers(...)` or for all new
 for testing.
 
 `TlsSockets` and `TrustAllCertificates` (see [Utilities](#utilities)) cover the client side. The system
-property `parley.core.forceTlsVersion` (for example `-DForceTlsVersion=TLSv1.2`) is available through
+property `parley.core.forceTlsVersion` (for example `-Dparley.core.forceTlsVersion=TLSv1.2`) is available through
 `SecureBaseObject.getForcedTlsProtocols()`; parley-core doesn't apply it itself, the protocol
 libraries that use it do.
 

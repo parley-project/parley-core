@@ -296,7 +296,7 @@ public class TestSecureBaseObjectCoverage {
 
 		@Override
 		public String getProperty(String propertyName, String defaultValue) {
-			if( propertyName.equals(counted) ) {
+			if( propertyName.equals(this.propertyName(counted)) ) {
 				lookups.incrementAndGet();
 			}
 			return super.getProperty(propertyName, defaultValue);
