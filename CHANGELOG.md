@@ -27,6 +27,16 @@
   `parley.core.forceTlsVersion`.
 - `BaseObject.getPropertyPrefix()` is public (servers expose their prefix through `IServer`).
 
+### Added
+
+- **Plugins** (`us.bringardner.parley.plugin`): `Plugins.load(app, restricted)` loads the jars in an
+  application's plugin folders (system before user, application's own before shared; settings
+  `parley.plugins.systemRoot`, `parley.plugins.userRoot`, `parley.plugins.path` and
+  `parley.<app>.plugins.path`, which an administrator sets in `/etc/parley/parley.properties` or
+  `$PARLEY_CONF`) into one class loader, checks `Parley-Plugin-Api`, registers JDBC drivers, and
+  reports what it loaded, skipped and shadowed (`PluginReport`). `Plugins.providers(type, onError)`
+  and `Plugins.onLoad(listener)`.
+
 ## parley-core 1.1.0 (unreleased)
 
 No changes yet.

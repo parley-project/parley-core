@@ -17,6 +17,7 @@ The Swing date and time pickers that used to be here are now a separate library,
 - [Properties](#properties)
 - [Logging](#logging)
 - [Threads and servers](#threads-and-servers)
+- [Plugins](#plugins)
 - [SSL](#ssl)
 - [Utilities](#utilities)
 - [Building and testing](#building-and-testing)
@@ -77,6 +78,9 @@ public class Mailer extends BaseObject {
 | | `Ec` | Elliptic curve helpers: point encoding and checks, and ECDSA signatures between DER and raw (r, s) / r‖s form. |
 | | `RenamedProperty` | Reads a system property under its new name, falling back to an old name (with a one-time deprecation warning). |
 | | `LogHelper` | Logging for code that can't extend `BaseObject`. |
+| `us.bringardner.parley.plugin` | `Plugins` | Jars an application finds at run time in its plugin folders, in one class loader. |
+| | `PluginFolders` | Where the plugin folders are, and the settings that move them. |
+| | `PluginReport` | What was loaded, from where, and what was skipped or shadowed. |
 
 ## Properties
 
@@ -359,6 +363,54 @@ the protocol server that handles logins applies them. A server can change the de
 `SocketClient` is the client side: `new SocketClient(useSSL).getSocket(host, port)` returns a
 socket configured with the same `socketTimeout`, `isSoLinger`, `soLinger`, `keepAlive` and
 `tcpNoDelay` properties.
+
+## Plugins
+
+An application loads its plugins once, as it starts, and finds what they provide with
+`ServiceLoader`:
+
+```java
+PluginReport report = Plugins.load("fsh", restricted);
+for (CommandProvider p : Plugins.providers(CommandProvider.class, Throwable::printStackTrace)) { ... }
+```
+
+For an application named `app`, the folders are searched in this order:
+
+| | Linux and macOS | Windows |
+|---|---|---|
+| 1. System, the application's | `/usr/local/lib/parley/app/plugins` | `%ProgramData%\Parley\app\plugins` |
+| 2. System, shared by every application | `/usr/local/lib/parley/plugins` | `%ProgramData%\Parley\plugins` |
+| 3. User, the application's | `~/.parley/app/plugins` | `%USERPROFILE%\.parley\app\plugins` |
+| 4. User, shared | `~/.parley/plugins` | `%USERPROFILE%\.parley\plugins` |
+
+System folders come before user folders, so a user can add plugins but not replace the ones an
+administrator installed. When two folders have a jar of the same name, the first one found is
+loaded and the other is reported as shadowed. A restricted application (a restricted shell) leaves
+out the user folders.
+
+A folder holds jars, and folders of jars: a plugin with its dependencies is `name/*.jar` plus
+`name/lib/*.jar`. A jar whose manifest has `Parley-Plugin-Api: 1` is a plugin; one built for
+another version is skipped with a message. A jar without it is loaded as a library (a JDBC driver,
+a dependency). JDBC drivers in plugin jars are registered with `DriverManager`. All the jars share
+one class loader, a child of the application's; when two jars have the same class, the first
+one's is used and the report warns about it.
+
+| Setting | Default | |
+|---|---|---|
+| `parley.plugins.systemRoot` | `/usr/local/lib/parley`, `%ProgramData%\Parley` | Where the system folders are |
+| `parley.plugins.userRoot` | `~/.parley` | Where the user folders are |
+| `parley.plugins.path` | | The folders, in order (separated by `:`, `;` on Windows), instead of all four |
+| `parley.app.plugins.path` | | The same, for one application |
+
+An administrator sets them in `/etc/parley/parley.properties` (Windows:
+`%ProgramData%\Parley\parley.properties`), or in the file the `PARLEY_CONF` environment
+variable names. That file wins over system properties for every setting but
+`parley.plugins.userRoot`; a restricted application reads only that file. This is policy, not
+security: anyone who can start a JVM can give it any class path.
+
+A module that looked up its providers before the plugins were loaded hears of them through
+`Plugins.onLoad(listener)`. A GraalVM native image cannot load jars, so there `load` loads nothing
+and says so in its report.
 
 ## SSL
 
