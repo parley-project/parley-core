@@ -268,4 +268,11 @@ public class TestPlugins {
 			Thread.currentThread().setContextClassLoader(before);
 		}
 	}
+
+	/** a JVM can always define classes, so it loads plugins (a closed-world native image cannot) */
+	@Test
+	public void canLoadClassesOnAJvm() {
+		assertFalse(Plugins.nativeImage());
+		assertTrue(Plugins.canLoadClasses());
+	}
 }
