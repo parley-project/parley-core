@@ -37,6 +37,13 @@
   reports what it loaded, skipped and shadowed (`PluginReport`). `Plugins.providers(type, onError)`
   and `Plugins.onLoad(listener)`.
 
+### Fixed
+
+- `SocketClient.getSocket()` keeps the connect timeout when a custom `getSocketFactory()` is a TLS factory that
+  can't create unconnected sockets: it connects a plain socket with the timeout and the factory puts TLS on it.
+  Before, it fell back to `createSocket(host, port)`, which can hang for as long as the operating system allows.
+  Other such factories still connect with `createSocket(host, port)` (no timeout), as the javadoc now says.
+
 ## parley-core 1.1.0 (unreleased)
 
 No changes yet.
