@@ -220,7 +220,7 @@ public class TestPlugins {
 			assertTrue(text.contains("future.jar: skipped, built for plugin API 2, this is 1"), text);
 			assertTrue(text.contains("(system, app)"), text);
 			assertTrue(text.contains("warning: dep.jar and zlib.jar both have 1 class (p4.Dep)"), text);
-			assertTrue(text.contains("/sys/plugins (system, shared): not there"), text.replace('\\', '/'));
+			assertTrue(text.replace('\\', '/').contains("/sys/plugins (system, shared): not there"), text.replace('\\', '/'));
 		} finally {
 			Thread.currentThread().setContextClassLoader(before);
 		}
