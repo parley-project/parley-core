@@ -78,4 +78,15 @@ public class TestObjectConfiguration {
 		helper.setConfiguration(null);
 		assertNull(helper.getConfiguration());
 	}
+
+	@Test
+	public void makeWithReachesTheConstructor() throws Exception {
+		class ReadsInConstructor extends PropSub {
+			final String seen = getProperty("parley.test.root");
+		}
+		ReadsInConstructor o = BaseObject.makeWith(props("parley.test.root", "/made"), ReadsInConstructor::new);
+		assertEquals("/made", o.seen);
+		assertNull(new PropSub().getConfiguration(), "only while makeWith runs");
+		assertNull(BaseObject.makeWith(null, PropSub::new).getConfiguration());
+	}
 }
