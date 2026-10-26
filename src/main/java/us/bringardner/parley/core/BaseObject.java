@@ -152,6 +152,8 @@ public class BaseObject {
 	 * The prefix of this object's settings, see {@link #propertyName(String)}.
 	 */
 	private volatile String propertyPrefix;
+	/** This object's own settings, or null: read them from the system properties */
+	private volatile Properties configuration;
 
 	private volatile ILogger logger ;
 
@@ -200,6 +202,48 @@ public class BaseObject {
 	 */
 	protected void setPropertyPrefix(String propertyPrefix) {
 		this.propertyPrefix = propertyPrefix;
+	}
+
+	/**
+	 * Give this object settings of its own. {@link #getProperty(String, String)} then looks a name
+	 * up in them, and in the properties files of its class chain for defaults, and never in the
+	 * system properties: two objects in one JVM (two servers, say) can then have different values
+	 * for the same setting. With no configuration (the default) the system properties are read, as
+	 * for an object alone in its JVM.
+	 *
+	 * @param configuration the settings, or null to read the system properties again
+	 * @since 2.0.0
+	 */
+	public void setConfiguration(Properties configuration) {
+		this.configuration = configuration;
+	}
+
+	/**
+	 * @return the settings given with {@link #setConfiguration(Properties)}, or null when this
+	 *         object reads the system properties
+	 * @since 2.0.0
+	 */
+	public Properties getConfiguration() {
+		return configuration;
+	}
+
+	/**
+	 * Read the same settings as another object (a server's helper, say): its configuration, or the
+	 * system properties when it has none.
+	 *
+	 * @param other the object whose settings to use; null is ignored
+	 * @since 2.0.0
+	 */
+	public void useConfigurationOf(BaseObject other) {
+		if( other != null ) {
+			this.configuration = other.getConfiguration();
+		}
+	}
+
+	/** A setting from this object's configuration, or the system properties when it has none */
+	private String fromConfiguration(String propertyName) {
+		Properties c = configuration;
+		return c != null ? c.getProperty(propertyName) : System.getProperty(propertyName);
 	}
 
 	/**
@@ -378,7 +422,7 @@ public class BaseObject {
 	 * Find a property by exactly the name given: nothing is added to it. The first value found is
 	 * returned:
 	 * <ol>
-	 * <li>The system property <code>propertyName</code>.</li>
+	 * <li>The object's configuration ({@link #setConfiguration(Properties)}) when it has one, else the system property <code>propertyName</code>.</li>
 	 * <li>The properties file named after the class (for example <code>/com/example/Mailer.properties</code>),
 	 *     then the properties files of each super class, up to (not including) BaseObject. Inner classes
 	 *     use the file of their outer class.</li>
@@ -526,7 +570,7 @@ public class BaseObject {
 	 * always: the properties files to search come from its {@link LookupPlan}.
 	 */
 	private String findProperty(LookupPlan plan, String propertyName) {
-		String ret = System.getProperty(propertyName);
+		String ret = fromConfiguration(propertyName);
 		for(int i = 0; ret == null && i < plan.classes.length; i++) {
 			Properties p = plan.entry(i);
 			if( p != MISSING ) {
@@ -538,7 +582,7 @@ public class BaseObject {
 
 	/** The search for an object whose {@link #getPropertyClass()} is not its own class. */
 	private String findPropertyOf(Class<?> start, String propertyName) {
-		String ret = System.getProperty(propertyName);
+		String ret = fromConfiguration(propertyName);
 		for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
 			String path = cls.getName();
 			int idx = path.indexOf('$');
