@@ -2,6 +2,13 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Changed (2026-10-26: each server alone, shared assets carry their own settings)
+
+- **An object can have settings of its own** (`BaseObject.setConfiguration`, `getConfiguration`,
+  `useConfigurationOf`, and `makeWith(configuration, make)` for what a constructor reads): `getProperty` then
+  reads the configuration, with the class files as defaults, and not the system properties, so two servers in
+  one JVM can have different values for one name. An object without one reads the system properties as before.
+
 ### Changed (needs a configuration change)
 
 - **`getProperty(name)` looks up exactly the name it is given**: the system property, then the properties
