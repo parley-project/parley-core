@@ -163,6 +163,35 @@ public class BaseObject {
 	 */
 	public BaseObject()  {
 		super();
+		this.configuration = MAKING_WITH.get();
+	}
+
+	/** The configuration objects made on this thread get ({@link #makeWith}) */
+	private static final ThreadLocal<Properties> MAKING_WITH = new ThreadLocal<>();
+
+	/**
+	 * Make an object (a server, say) with settings of its own: every BaseObject made on this thread
+	 * while make runs starts with this configuration ({@link #setConfiguration(Properties)}), so
+	 * what its constructor reads comes from the configuration too.
+	 *
+	 * @param configuration the settings, or null for the system properties
+	 * @param make          makes the object
+	 * @return what make made
+	 * @throws Exception what make throws
+	 * @since 2.0.0
+	 */
+	public static <T> T makeWith(Properties configuration, java.util.concurrent.Callable<T> make) throws Exception {
+		Properties before = MAKING_WITH.get();
+		MAKING_WITH.set(configuration);
+		try {
+			return make.call();
+		} finally {
+			if( before == null ) {
+				MAKING_WITH.remove();
+			} else {
+				MAKING_WITH.set(before);
+			}
+		}
 	}
 
 
