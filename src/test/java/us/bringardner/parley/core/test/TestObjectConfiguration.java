@@ -89,4 +89,25 @@ public class TestObjectConfiguration {
 		assertNull(new PropSub().getConfiguration(), "only while makeWith runs");
 		assertNull(BaseObject.makeWith(null, PropSub::new).getConfiguration());
 	}
+
+	@Test
+	public void makeWithIsUndoneWhenTheConstructorThrowsAndWhenNested() throws Exception {
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> BaseObject.makeWith(props("a", "1"), () -> {
+			throw new IllegalStateException("can't make it");
+		}));
+		assertNull(new PropSub().getConfiguration(), "reset after a failure");
+		Properties outer = props("x", "outer");
+		Properties inner = props("x", "inner");
+		PropSub[] seen = new PropSub[3];
+		BaseObject.makeWith(outer, () -> {
+			seen[0] = new PropSub();
+			seen[1] = BaseObject.makeWith(inner, PropSub::new);
+			seen[2] = new PropSub();
+			return null;
+		});
+		assertSame(outer, seen[0].getConfiguration());
+		assertSame(inner, seen[1].getConfiguration());
+		assertSame(outer, seen[2].getConfiguration(), "the outer one again after the inner call");
+		assertNull(new PropSub().getConfiguration());
+	}
 }
