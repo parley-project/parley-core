@@ -5,19 +5,27 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
@@ -232,6 +240,143 @@ public class TestTlsHostname {
 		client.setVerifyHostname(false);
 		try (Socket s = client.getSocket("localhost", otherNameServer.getServerSocket().getLocalPort())) {
 			echo(s);
+		}
+	}
+
+	/**
+	 * A TLS factory that can't create unconnected sockets (createSocket() fails, as SocketFactory's
+	 * default does) and counts the calls to createSocket(host, port), the one that connects with no timeout.
+	 */
+	static class ConnectedOnlyTlsFactory extends SSLSocketFactory {
+		final SSLSocketFactory delegate;
+		final AtomicInteger hostPortCalls = new AtomicInteger();
+
+		ConnectedOnlyTlsFactory(SSLSocketFactory delegate) {
+			this.delegate = delegate;
+		}
+		@Override
+		public Socket createSocket() throws IOException {
+			throw new SocketException("Unconnected sockets not implemented");
+		}
+		@Override
+		public String[] getDefaultCipherSuites() {
+			return delegate.getDefaultCipherSuites();
+		}
+		@Override
+		public String[] getSupportedCipherSuites() {
+			return delegate.getSupportedCipherSuites();
+		}
+		@Override
+		public Socket createSocket(Socket s, String host, int port, boolean autoClose) throws IOException {
+			return delegate.createSocket(s, host, port, autoClose);
+		}
+		@Override
+		public Socket createSocket(String host, int port) throws IOException {
+			hostPortCalls.incrementAndGet();
+			return delegate.createSocket(host, port);
+		}
+		@Override
+		public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException {
+			hostPortCalls.incrementAndGet();
+			return delegate.createSocket(host, port, localHost, localPort);
+		}
+		@Override
+		public Socket createSocket(InetAddress host, int port) throws IOException {
+			hostPortCalls.incrementAndGet();
+			return delegate.createSocket(host, port);
+		}
+		@Override
+		public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
+			hostPortCalls.incrementAndGet();
+			return delegate.createSocket(address, port, localAddress, localPort);
+		}
+	}
+
+	/** A client whose factory is a ConnectedOnlyTlsFactory around the one it would have used. */
+	private static class ConnectedOnlyTlsClient extends SocketClient {
+		ConnectedOnlyTlsFactory factory;
+
+		ConnectedOnlyTlsClient() {
+			super(true);
+			setTrustManagers(new TrustManager[] {new TrustEverything()});
+			setConnectTimeout(5000);
+			setSocketTimeout(5000);
+		}
+
+		@Override
+		public synchronized SocketFactory getSocketFactory() {
+			if( factory == null ) {
+				try {
+					factory = new ConnectedOnlyTlsFactory((SSLSocketFactory) super.getSocketFactory());
+				} catch (Exception e) {
+					throw new IllegalStateException(e);
+				}
+			}
+			return factory;
+		}
+	}
+
+	@Test
+	public void testTlsFactoryWithoutUnconnectedSocketsUsesTheConnectTimeout() throws Exception {
+		//  The plain socket is connected with the timeout and the factory layers TLS on it,
+		//  so createSocket(host, port) (no timeout) isn't used, and the host name check still applies.
+		ConnectedOnlyTlsClient client = new ConnectedOnlyTlsClient();
+		try (Socket s = client.getSocket("localhost", localhostServer.getServerSocket().getLocalPort())) {
+			assertTrue(s instanceof SSLSocket);
+			assertEquals(5000, s.getSoTimeout(), "The socket was configured");
+			echo(s);
+		}
+		int port = otherNameServer.getServerSocket().getLocalPort();
+		assertThrows(SSLException.class, () -> client.getSocket("localhost", port), "A certificate for bringardner.us must not be accepted for localhost");
+		assertEquals(0, client.factory.hostPortCalls.get(), "createSocket(host, port) connects with no timeout and must not be used");
+	}
+
+	@Test
+	public void testTlsFactoryWithoutUnconnectedSocketsAndNoTimeout() throws Exception {
+		//  With no connect timeout the factory connects (createSocket(host, port)), as before
+		ConnectedOnlyTlsClient client = new ConnectedOnlyTlsClient();
+		client.setConnectTimeout(0);
+		try (Socket s = client.getSocket("localhost", localhostServer.getServerSocket().getLocalPort())) {
+			echo(s);
+		}
+		assertEquals(1, client.factory.hostPortCalls.get());
+	}
+
+	@Test
+	public void testTlsFactoryWithoutUnconnectedSocketsTimesOutAStalledConnect() throws Exception {
+		//  A server that never accepts: once its backlog is full, the operating system stops
+		//  answering new connections (on Linux and macOS), so a connect stalls until it times out.
+		List<Socket> filling = new ArrayList<>();
+		try (ServerSocket full = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+			InetSocketAddress addr = new InetSocketAddress(InetAddress.getLoopbackAddress(), full.getLocalPort());
+			boolean stalled = false;
+			for (int i = 0; i < 50 && !stalled; i++) {
+				Socket s = new Socket();
+				filling.add(s);
+				try {
+					s.connect(addr, 300);
+				} catch (SocketTimeoutException e) {
+					stalled = true;
+				} catch (IOException e) {
+					break;
+				}
+			}
+			assumeTrue(stalled, "This system doesn't stall connections to a full backlog");
+
+			ConnectedOnlyTlsClient client = new ConnectedOnlyTlsClient();
+			client.setConnectTimeout(500);
+			long start = System.currentTimeMillis();
+			assertThrows(SocketTimeoutException.class, () -> client.getSocket(addr.getHostString(), addr.getPort()));
+			long elapsed = System.currentTimeMillis()-start;
+			assertTrue(elapsed < 5000, "getSocket took "+elapsed+" ms");
+			assertEquals(0, client.factory.hostPortCalls.get());
+		} finally {
+			for (Socket s : filling) {
+				try {
+					s.close();
+				} catch (IOException e) {
+				}
+			}
 		}
 	}
 }

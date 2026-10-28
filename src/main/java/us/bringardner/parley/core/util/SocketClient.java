@@ -199,6 +199,12 @@ public class SocketClient extends SecureBaseObject {
 	 * (with a SocketTimeoutException). A secure socket has finished its TLS handshake when it is
 	 * returned, so set TLS options (enabled protocols, say) in {@link #configure(Socket)}.
 	 * If anything fails the socket is closed before the exception is thrown.
+	 * <p>
+	 * A custom {@link #getSocketFactory()} that can't create unconnected sockets is handled too:
+	 * when it is an SSLSocketFactory and a connect timeout is set, a plain socket is connected with
+	 * the timeout and the factory puts TLS on it. Any other such factory connects with
+	 * {@code createSocket(host, port)}, which has no timeout (the connect can take as long as the
+	 * operating system allows).
 	 *
 	 * @param host
 	 * @param port
@@ -219,12 +225,23 @@ public class SocketClient extends SecureBaseObject {
 			try {
 				ret = sf.createSocket();
 			} catch (SocketException | UnsupportedOperationException e) {
-				//  Some custom factories can't create unconnected sockets, connect without a timeout.
+				//  Some custom factories can't create unconnected sockets
 				ret = null;
 			}
+			int connectTimeout = getConnectTimeout();
 			if( ret != null ) {
-				ret.connect(new InetSocketAddress(host, port), getConnectTimeout());
+				ret.connect(new InetSocketAddress(host, port), connectTimeout);
+			} else if( connectTimeout > 0 && sf instanceof SSLSocketFactory ) {
+				//  createSocket(host, port) would connect with no timeout. Connect a plain socket with
+				//  the timeout and let the factory put TLS on it (host name check and SNI included,
+				//  as the factory does them). Until that works ret is the plain socket, so it is closed
+				//  below if anything fails.
+				ret = new Socket();
+				ret.connect(new InetSocketAddress(host, port), connectTimeout);
+				ret = ((SSLSocketFactory) sf).createSocket(ret, host, port, true);
 			} else {
+				//  Not a TLS factory (it may route the connection its own way), or no timeout wanted:
+				//  only the factory can connect, with no timeout.
 				ret = sf.createSocket(host, port);
 			}
 			configure(ret);
