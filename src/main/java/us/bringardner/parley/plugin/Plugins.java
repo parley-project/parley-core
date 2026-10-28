@@ -44,7 +44,8 @@ import java.util.jar.Manifest;
  * JDBC drivers in plugin jars are registered with DriverManager (through a small wrapper, since
  * DriverManager only lets code use drivers its own class loader can see).
  *
- * A native image (GraalVM) cannot load jars: there load() reports that and loads nothing.
+ * A native image (GraalVM) loads jars only when it was built to load classes at run time (Crema,
+ * -H:+RuntimeClassLoading); any other native image reports that it cannot and loads nothing.
  *
  * Copyright 2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>
  *
@@ -94,8 +95,8 @@ public final class Plugins {
 				return report;
 			}
 			PluginReport r = new PluginReport(folders.app(), folders.folders());
-			if( "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode")) ) {
-				r.notLoaded("a native image cannot load jars");
+			if( nativeImage() && !canLoadClasses() ) {
+				r.notLoaded("a native image cannot load jars (it was not built with -H:+RuntimeClassLoading)");
 				report = r;
 				return r;
 			}
@@ -127,6 +128,43 @@ public final class Plugins {
 			}
 		}
 		return report;
+	}
+
+	/** whether this is a GraalVM native image */
+	public static boolean nativeImage() {
+		return "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
+	}
+
+	/**
+	 * Whether this program can define classes at run time: always on a JVM; in a native image only
+	 * when it was built with Crema (-H:+RuntimeClassLoading). Found by defining an empty class.
+	 */
+	public static boolean canLoadClasses() {
+		Boolean ret = canLoadClasses;
+		if( ret == null ) {
+			ret = !nativeImage() || defineProbe();
+			canLoadClasses = ret;
+		}
+		return ret;
+	}
+	private static volatile Boolean canLoadClasses;
+
+	/** (the class file of public class ParleyPluginProbe {}, Java 8) */
+	private static final String PROBE = "yv66vgAAADQACgoAAgADBwAEDAAFAAYBABBqYXZhL2xhbmcvT2JqZWN0AQAGPGluaXQ+AQADKClWBwAIAQARUGFybGV5UGx1Z2luUHJvYmUBAARDb2RlACEABwACAAAAAAABAAEABQAGAAEACQAAABEAAQABAAAABSq3AAGxAAAAAAAA";
+
+	private static boolean defineProbe() {
+		byte[] b = java.util.Base64.getDecoder().decode(PROBE);
+		try {
+			Class<?> c = new ClassLoader("parley-probe", Plugins.class.getClassLoader()) {
+				Class<?> define() {
+					return defineClass("ParleyPluginProbe", b, 0, b.length);
+				}
+			}.define();
+			return c.getName().equals("ParleyPluginProbe");
+		} catch (Throwable e) {
+			// (a closed-world native image: UnsupportedFeatureError)
+			return false;
+		}
 	}
 
 	/** what load found, or null before it ran */
