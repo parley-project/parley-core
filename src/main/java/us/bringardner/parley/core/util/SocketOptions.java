@@ -36,7 +36,8 @@ public final class SocketOptions {
 
 	public static final String PROPERTY_SO_LINGER = "soLinger";
 	/**
-	 * SO_LINGER is in SECONDS (see Socket.setSoLinger).
+	 * The setting is a duration (10s, 500ms); SO_LINGER itself is in whole seconds (see Socket.setSoLinger),
+	 * so a part of a second counts as one. This default is in seconds.
 	 * This was 60000 (almost 17 hours) which could block Socket.close() for a very long time.
 	 */
 	public static final int DEFAULT_SO_LINGER = 10;
@@ -83,7 +84,9 @@ public final class SocketOptions {
 		if (lingerTime < 0) {
 			synchronized (this) {
 				if (lingerTime < 0) {
-					lingerTime = properties.getIntProperty(properties.propertyName(PROPERTY_SO_LINGER), DEFAULT_SO_LINGER);
+					//  a duration (10s); SO_LINGER itself is in whole seconds, so a part of a second counts as one
+					long ms = properties.getDuration(properties.propertyName(PROPERTY_SO_LINGER), DEFAULT_SO_LINGER * 1000L);
+					lingerTime = Durations.toIntMillis((ms + 999) / 1000);
 				}
 			}
 		}
@@ -144,7 +147,7 @@ public final class SocketOptions {
 		if (socketTimeout < 0) {
 			synchronized (this) {
 				if (socketTimeout < 0) {
-					socketTimeout = properties.getIntProperty(properties.propertyName(PROPERTY_SOCKET_TIMEOUT), DEFAULT_SOCKET_TIMEOUT);
+					socketTimeout = Durations.toIntMillis(properties.getDuration(properties.propertyName(PROPERTY_SOCKET_TIMEOUT), DEFAULT_SOCKET_TIMEOUT));
 				}
 			}
 		}

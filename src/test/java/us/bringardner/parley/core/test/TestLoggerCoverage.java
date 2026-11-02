@@ -31,7 +31,7 @@ import us.bringardner.parley.core.Log4JLogger;
  */
 public class TestLoggerCoverage {
 
-	// ParleyLogger's settings are read by their names alone (logFile, logLevel ...)
+	// ParleyLogger's settings are read by their names alone (parley.log.file, parley.log.level ...)
 	private static final String LOGGER_PREFIX = "";
 
 	@Test
@@ -93,7 +93,7 @@ public class TestLoggerCoverage {
 
 	@Test
 	public void testParleyLoggerLevelByName() {
-		System.setProperty("test.parley.named.logLevel", "debug");
+		System.setProperty("parley.log.level.test.parley.named", "debug");
 		try {
 			ParleyLogger logger = new ParleyLogger();
 			logger.init("test.parley.named");
@@ -103,8 +103,50 @@ public class TestLoggerCoverage {
 			other.init("");
 			assertEquals(ParleyLogger.DEFAULT_LEVEL, other.getLevel(), "An empty name uses the default level");
 		} finally {
-			System.clearProperty("test.parley.named.logLevel");
+			System.clearProperty("parley.log.level.test.parley.named");
 		}
+	}
+
+	@Test
+	public void testParleyLoggerNearestLevel() {
+		String[] keys = { "parley.log.level", "parley.log.level.pop3", "parley.log.level.pop3.server.Pop3Server", "parley.log.level.fsh" };
+		try {
+			System.setProperty("parley.log.level", "WARN");
+			System.setProperty("parley.log.level.pop3", "INFO");
+			System.setProperty("parley.log.level.pop3.server.Pop3Server", "DEBUG");
+			System.setProperty("parley.log.level.fsh", "NONE");
+			assertEquals(Level.DEBUG, level("us.bringardner.parley.pop3.server.Pop3Server"), "its own name");
+			assertEquals(Level.INFO, level("us.bringardner.parley.pop3.server.Pop3Command"), "the module's");
+			assertEquals(Level.INFO, level("us.bringardner.parley.pop3.Pop3Client"), "the module's");
+			assertEquals(Level.WARN, level("us.bringardner.parley.pop3x.Other"), "a whole segment only");
+			assertEquals(Level.WARN, level("us.bringardner.parley.smtp.server.SmtpServer"), "everything else's");
+			assertEquals(Level.NONE, level("us.bringardner.fsh.Shell"), "without us.bringardner. outside Parley");
+			assertEquals(Level.WARN, level("com.example.Mailer"), "other names as they are");
+			System.clearProperty("parley.log.level");
+			assertEquals(ParleyLogger.DEFAULT_LEVEL, level("us.bringardner.parley.smtp.server.SmtpServer"));
+			System.setProperty("us.bringardner.parley.smtp.server.SmtpServer.logLevel", "DEBUG");
+			assertEquals(ParleyLogger.DEFAULT_LEVEL, level("us.bringardner.parley.smtp.server.SmtpServer"), "1.x's name.logLevel is not read");
+			System.clearProperty("us.bringardner.parley.smtp.server.SmtpServer.logLevel");
+		} finally {
+			for(String k : keys) {
+				System.clearProperty(k);
+			}
+		}
+	}
+
+	@Test
+	public void testLevelName() {
+		assertEquals("pop3.server.Pop3Server", ParleyLogger.levelName("us.bringardner.parley.pop3.server.Pop3Server"));
+		assertEquals("files.sftp.SftpFactory", ParleyLogger.levelName("us.bringardner.parley.files.sftp.SftpFactory"));
+		assertEquals("fsh.Shell", ParleyLogger.levelName("us.bringardner.fsh.Shell"));
+		assertEquals("com.example.Mailer", ParleyLogger.levelName("com.example.Mailer"));
+		assertEquals("", ParleyLogger.levelName(null));
+	}
+
+	private static Level level(String loggerName) {
+		ParleyLogger logger = new ParleyLogger();
+		logger.init(loggerName);
+		return logger.getLevel();
 	}
 
 	@Test

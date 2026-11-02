@@ -51,30 +51,36 @@ import java.util.concurrent.TimeUnit;
  */
 public class ParleyLogger extends BaseObject implements ILogger {
 
-	public static final String PROPERTY_LOG_LEVEL = "logLevel";
-	public static final String PROPERTY_LOG_FILE = "logFile";
+	/**
+	 * The level of every logger (NONE, ERROR, WARN, INFO, DEBUG; the default is ERROR). One logger,
+	 * or every logger under a name, gets its own with a longer name: {@code parley.log.level.pop3},
+	 * {@code parley.log.level.pop3.server.Pop3Server}; see {@link #levelName(String)}.
+	 */
+	public static final String PROPERTY_LOG_LEVEL = "parley.log.level";
+	/** A file to append to, or System.out (the default) or System.err. */
+	public static final String PROPERTY_LOG_FILE = "parley.log.file";
 	/**
 	 * When the log file would grow past this size it is renamed (to logFile.1, the old logFile.1 to logFile.2 ...)
 	 * and a new one is started. Bytes, or with a K, M or G suffix ("10M"). The default (0) is no limit.
 	 */
-	public static final String PROPERTY_LOG_FILE_MAX_SIZE = "logFileMaxSize";
+	public static final String PROPERTY_LOG_FILE_MAX_SIZE = "parley.log.fileMaxSize";
 	/**
 	 * How many old log files are kept when {@link #PROPERTY_LOG_FILE_MAX_SIZE} is set, the default is
 	 * {@link #DEFAULT_LOG_FILE_COUNT}. With 0 the log file is started again from empty.
 	 */
-	public static final String PROPERTY_LOG_FILE_COUNT = "logFileCount";
+	public static final String PROPERTY_LOG_FILE_COUNT = "parley.log.fileCount";
 	public static final int DEFAULT_LOG_FILE_COUNT = 5;
 	/**
-	 * Milliseconds between flushes of a log file. By default (0) every entry is written to the file as
-	 * soon as it is logged. With a value (100 to 1000 is typical) entries are collected and written
-	 * together, which is several times cheaper for a busy logger; the cost is that the last entries
-	 * (up to this many milliseconds) are lost if the JVM is killed. They are written at a normal exit and
+	 * The time between flushes of a log file, a duration ({@code 500ms}, {@code 1s}). By default (0) every
+	 * entry is written to the file as soon as it is logged. With a value (100ms to 1s is typical) entries
+	 * are collected and written together, which is several times cheaper for a busy logger; the cost is
+	 * that the last entries (up to this long) are lost if the JVM is killed. They are written at a normal exit and
 	 * by {@link #closeLogFiles()}. Like the maximum size, the first logger to open a file decides it.
 	 */
-	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "logFlushInterval";
+	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "parley.log.flushInterval";
 	/**
 	 * The default level is ERROR so that errors are never silently discarded.
-	 * Set the logLevel property (NONE, ERROR, WARN, INFO, DEBUG) to change it.
+	 * Set {@value #PROPERTY_LOG_LEVEL} (NONE, ERROR, WARN, INFO, DEBUG) to change it.
 	 */
 	public static final Level DEFAULT_LEVEL = Level.ERROR;
 	
@@ -231,25 +237,20 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	/**
 	 * Initialize this logger.
 	 * 
-	 * The level is taken from the first of these properties that is defined:
-	 * 	name.logLevel  (specific to this logger name)
-	 * 	logLevel       
+	 * The level is the nearest one set for the logger's name ({@link #levelName(String)}): for the
+	 * logger us.bringardner.parley.pop3.server.Pop3Server the first of
+	 * {@code parley.log.level.pop3.server.Pop3Server}, {@code parley.log.level.pop3.server},
+	 * {@code parley.log.level.pop3} and {@code parley.log.level} that is set.
 	 * 
 	 * The value is not case sensitive. An invalid value is reported and the default (ERROR) is used.
 	 *  
-	 * logFile may be System.out, System.err or a file name.  Log files are opened once, in append mode,
+	 * {@value #PROPERTY_LOG_FILE} may be System.out, System.err or a file name.  Log files are opened once, in append mode,
 	 * and shared by all loggers that use the same file.
 	 */
 	public void init(String name) {
 		this.name = name;
-		String tmp = null;
-		if( name != null && !name.isEmpty()) {
-			tmp = getProperty(name+"."+PROPERTY_LOG_LEVEL);
-		}
-		if( tmp == null ) {
-			tmp = getProperty(PROPERTY_LOG_LEVEL);
-		}
-		level = parseLevel(tmp, DEFAULT_LEVEL);
+		level = parseLevel(findLevel(name), DEFAULT_LEVEL);
+		String tmp;
 		
 		if( (tmp=getProperty(PROPERTY_LOG_FILE)) != null) {
 			tmp = tmp.trim();
@@ -262,7 +263,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 			}  else {
 				long maxSize = parseSize(getProperty(PROPERTY_LOG_FILE_MAX_SIZE));
 				int count = getIntProperty(PROPERTY_LOG_FILE_COUNT, DEFAULT_LOG_FILE_COUNT);
-				int flushInterval = Math.max(0, getIntProperty(PROPERTY_LOG_FLUSH_INTERVAL, 0));
+				int flushInterval = us.bringardner.parley.core.util.Durations.toIntMillis(getDuration(PROPERTY_LOG_FLUSH_INTERVAL, 0));
 				PrintStream ps = openLogFile(tmp, maxSize, count, flushInterval);
 				if( ps != null ) {
 					_out = ps;
@@ -272,6 +273,47 @@ public class ParleyLogger extends BaseObject implements ILogger {
 		}
 	}
 	
+	/** The nearest level set for a logger name: parley.log.level.NAME, then each shorter name, then parley.log.level. */
+	private String findLevel(String loggerName) {
+		String n = levelName(loggerName);
+		while( !n.isEmpty() ) {
+			String v = getProperty(PROPERTY_LOG_LEVEL + "." + n);
+			if( v != null && !v.trim().isEmpty() ) {
+				return v;
+			}
+			int dot = n.lastIndexOf('.');
+			n = dot < 0 ? "" : n.substring(0, dot);
+		}
+		return getProperty(PROPERTY_LOG_LEVEL);
+	}
+
+	/**
+	 * The name a logger's level is set under, after {@value #PROPERTY_LOG_LEVEL}: its name without
+	 * {@code us.bringardner.parley.} (or {@code us.bringardner.}), so the logger
+	 * us.bringardner.parley.pop3.server.Pop3Server is {@code pop3.server.Pop3Server}, and
+	 * {@code parley.log.level.pop3} sets every POP3 logger. Other names are used as they are.
+	 *
+	 * @param loggerName a logger's name (usually a class name), or null
+	 * @return the name to look its level up by, "" for none
+	 * @since 2.0.0
+	 */
+	public static String levelName(String loggerName) {
+		if( loggerName == null ) {
+			return "";
+		}
+		String n = loggerName.trim();
+		if( n.startsWith(PARLEY_PACKAGE) ) {
+			return n.substring(PARLEY_PACKAGE.length());
+		}
+		if( n.startsWith(BRINGARDNER_PACKAGE) ) {
+			return n.substring(BRINGARDNER_PACKAGE.length());
+		}
+		return n;
+	}
+
+	private static final String PARLEY_PACKAGE = "us.bringardner.parley.";
+	private static final String BRINGARDNER_PACKAGE = "us.bringardner.";
+
 	/**
 	 * Convert a String to a Level (not case sensitive). 
 	 * @param value

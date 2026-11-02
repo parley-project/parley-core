@@ -652,6 +652,53 @@ public class BaseObject {
 	}
 
 	/**
+	 * Get a duration property: a whole number with a unit ({@code 250ms}, {@code 30s}, {@code 5m},
+	 * {@code 1h}, {@code 5d}), or a number of milliseconds (see
+	 * {@link us.bringardner.parley.core.util.Durations}). If the property is not defined, or is not a
+	 * valid duration, the default is returned (an invalid value is reported to System.err).
+	 *
+	 * @param propertyName  Name of the property
+	 * @param defaultMillis the default, in milliseconds
+	 * @return the duration in milliseconds
+	 * @since 2.0.0
+	 */
+	public long getDuration(String propertyName, long defaultMillis) {
+		String tmp = getProperty(propertyName);
+		if( tmp == null || tmp.trim().isEmpty() ) {
+			return defaultMillis;
+		}
+		try {
+			return us.bringardner.parley.core.util.Durations.parse(tmp);
+		} catch (IllegalArgumentException e) {
+			// Don't use the logger here, getProperty is used while loggers are being created.
+			System.err.println("Invalid duration for property "+propertyName+" in "+getClass().getName()+": "+e.getMessage()+". Using default "+us.bringardner.parley.core.util.Durations.format(Math.max(0, defaultMillis)));
+			return defaultMillis;
+		}
+	}
+
+	/**
+	 * Get a list of durations, separated by commas ({@code 1m,5m,15m,1h}); see
+	 * {@link #getDuration(String, long)}.
+	 *
+	 * @param propertyName  Name of the property
+	 * @param defaultMillis the default, in milliseconds
+	 * @return the durations in milliseconds
+	 * @since 2.0.0
+	 */
+	public long[] getDurations(String propertyName, long... defaultMillis) {
+		String tmp = getProperty(propertyName);
+		if( tmp == null || tmp.trim().isEmpty() ) {
+			return defaultMillis.clone();
+		}
+		try {
+			return us.bringardner.parley.core.util.Durations.parseList(tmp);
+		} catch (IllegalArgumentException e) {
+			System.err.println("Invalid durations for property "+propertyName+" in "+getClass().getName()+": "+e.getMessage()+". Using default "+us.bringardner.parley.core.util.Durations.formatList(defaultMillis));
+			return defaultMillis.clone();
+		}
+	}
+
+	/**
 	 * Get a boolean property ("true" in any case is true, anything else is false).
 	 * 
 	 * @param propertyName Name of the property
@@ -695,7 +742,7 @@ public class BaseObject {
 						}
 					}
 					if( loggerClass == null ) 	{						
-						//  Only with a log4j implementation, the log4j API alone would ignore our logLevel and logFile settings
+						//  Only with a log4j implementation, the log4j API alone would ignore our parley.log.level and parley.log.file settings
 						loggerClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : ParleyLogger.class;
 					}
 				}

@@ -34,9 +34,11 @@ parley.*.plugins.path
 <server>.socketTimeout
 <server>.tcpNoDelay
 
-# A server's log (ParleyLogger, under the server's name)
-<server>.logLevel
-<server>.logFile
-<server>.logFileCount
-<server>.logFileMaxSize
-<server>.logFlushInterval
+# The log (ParleyLogger): every logger's level, one name's (a logger's name without
+# us.bringardner.parley., e.g. parley.log.level.pop3), and the log file
+parley.log.level
+parley.log.level.**
+parley.log.file
+parley.log.fileCount
+parley.log.fileMaxSize
+parley.log.flushInterval

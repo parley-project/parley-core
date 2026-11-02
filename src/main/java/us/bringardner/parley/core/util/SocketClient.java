@@ -272,7 +272,7 @@ public class SocketClient extends SecureBaseObject {
 		if( connectTimeout < 0 ) {
 			synchronized(this) {
 				if( connectTimeout < 0 ) {
-					connectTimeout = getIntProperty(propertyName(PROPERTY_CONNECT_TIMEOUT), DEFAULT_CONNECT_TIMEOUT);
+					connectTimeout = Durations.toIntMillis(getDuration(propertyName(PROPERTY_CONNECT_TIMEOUT), DEFAULT_CONNECT_TIMEOUT));
 				}
 			}
 		}
