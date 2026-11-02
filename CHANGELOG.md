@@ -2,6 +2,20 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Changed (2026-11-02: durations and log settings, To-Do 2.19)
+
+- **Durations with units**: every length of time is a whole number with `ms`, `s`, `m`, `h` or `d` (`30s`,
+  `5m`), a bare number being milliseconds. `BaseObject.getDuration(name, default)` and
+  `getDurations(name, default...)` (a list, `1m,5m,1h`), and `util.Durations` to parse and format them.
+  parley-core's own times read this way: `acceptTimeout`, `socketTimeout`, `connectTimeout`,
+  `loginFailureDelay`, `loginTimeLimit` and `soLinger`. **`soLinger` is a duration now too**: 1.x's
+  `soLinger=10` (seconds) is 10 ms (rounded up to 1 s); write `10s`.
+- **The log settings are `parley.log.*`**: `parley.log.level` (all loggers), `parley.log.level.<name>` (one
+  logger, or every logger under a name, the nearest one set winning; a logger's name here is its name without
+  `us.bringardner.parley.`, so `parley.log.level.pop3`), `parley.log.file`, `parley.log.fileMaxSize`,
+  `parley.log.fileCount` and `parley.log.flushInterval` (a duration). 1.x's `logLevel`, `<logger>.logLevel`,
+  `logFile`, `logFileMaxSize`, `logFileCount` and `logFlushInterval` are no longer read.
+
 ### Changed (2026-10-26: each server alone, shared assets carry their own settings)
 
 - **An object can have settings of its own** (`BaseObject.setConfiguration`, `getConfiguration`,

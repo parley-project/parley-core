@@ -667,7 +667,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( loginFailureDelay < 0 ) {
 			synchronized(this) {
 				if( loginFailureDelay < 0 ) {
-					loginFailureDelay = Math.max(0, getIntProperty(propertyName(PROPERTY_LOGIN_FAILURE_DELAY), getDefaultLoginFailureDelay()));
+					loginFailureDelay = Durations.toIntMillis(getDuration(propertyName(PROPERTY_LOGIN_FAILURE_DELAY), getDefaultLoginFailureDelay()));
 				}
 			}
 		}
@@ -742,7 +742,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( loginTimeLimit < 0 ) {
 			synchronized(this) {
 				if( loginTimeLimit < 0 ) {
-					loginTimeLimit = Math.max(0, getIntProperty(propertyName(PROPERTY_LOGIN_TIME_LIMIT), getDefaultLoginTimeLimit()));
+					loginTimeLimit = Durations.toIntMillis(getDuration(propertyName(PROPERTY_LOGIN_TIME_LIMIT), getDefaultLoginTimeLimit()));
 				}
 			}
 		}
@@ -783,7 +783,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		if( acceptTimeout < 0 ) {
 			synchronized(this) {
 				if(acceptTimeout < 0 ) {
-					acceptTimeout = getIntProperty(propertyName(PROPERTY_ACCEPT_TIMEOUT), DEFAULT_ACCEPT_TIMEOUT);
+					acceptTimeout = Durations.toIntMillis(getDuration(propertyName(PROPERTY_ACCEPT_TIMEOUT), DEFAULT_ACCEPT_TIMEOUT));
 				}
 			}
 		}

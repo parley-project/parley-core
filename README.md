@@ -38,8 +38,8 @@ parley-core is on Maven Central, so no extra repository is needed:
 
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
-> `us.bringardner.core` with `us.bringardner.parley.core` in imports and in property names
-> such as `us.bringardner.parley.core.ParleyLogger.logLevel`. `BjlLogger` is now `ParleyLogger`.
+> `us.bringardner.core` with `us.bringardner.parley.core` in imports; 2.0.0 renamed the settings
+> too (the log's are `parley.log.*`). `BjlLogger` is now `ParleyLogger`.
 > See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 A class gets properties and logging by extending `BaseObject`:
@@ -185,6 +185,17 @@ files are cached (see [Caching](#caching)).
   to `System.err` and returns the default.
 - `getBooleanProperty(name, default)` is true only for `true` (any case, surrounding spaces ignored).
   Any other value is false, the default is used when the property isn't defined.
+- `getDuration(name, defaultMillis)` reads a length of time and returns milliseconds, and
+  `getDurations(name, defaultMillis...)` a list of them separated by commas (`1m,5m,15m,1h`). See
+  [Durations](#durations).
+
+### Durations
+
+Every Parley setting that is a length of time takes a whole number with a unit: `ms`, `s`, `m`,
+`h` or `d` (`250ms`, `30s`, `5m`, `1h`, `5d`; any case, a space before the unit is allowed). A number
+without a unit is milliseconds, so `5000` and `5s` are the same. No setting has its unit in its
+name. `us.bringardner.parley.core.util.Durations` parses and formats them (`format(5_400_000)` is
+`90m`). An invalid value prints a warning to `System.err` and the default is used.
 
 ### Where the files can be
 
@@ -234,12 +245,12 @@ It is configured with these properties, by these names (see [Properties](#proper
 
 | Property | Meaning |
 |---|---|
-| `<logger name>.logLevel` | The level for one logger, e.g. `-Dcom.example.Mailer.logLevel=DEBUG` |
-| `logLevel` | The level for all loggers. The default is `ERROR`. |
-| `logFile` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
-| `logFileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `logFile.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |
-| `logFileCount` | How many old log files to keep, 5 by default. With 0 the log file is started again from empty. |
-| `logFlushInterval` | Milliseconds between writes to the log file. The default is 0: every entry is written as soon as it is logged. With a value (100 to 1000 is typical) entries are collected and written together, which is about ten times cheaper for a busy logger. The last entries (up to that many milliseconds) are lost if the JVM is killed; they are written at a normal exit and by `ParleyLogger.closeLogFiles()`. |
+| `parley.log.level` | The level for all loggers. The default is `ERROR`. |
+| `parley.log.level.<name>` | The level for one logger, or every logger under a name; the nearest one set wins. A logger's name here is its name without `us.bringardner.parley.` (or `us.bringardner.`): `parley.log.level.pop3=DEBUG` sets every POP3 logger, `parley.log.level.pop3.server.Pop3Server` one class; other names are used whole (`parley.log.level.com.example.Mailer`). |
+| `parley.log.file` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
+| `parley.log.fileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `<file>.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |
+| `parley.log.fileCount` | How many old log files to keep, 5 by default. With 0 the log file is started again from empty. |
+| `parley.log.flushInterval` | The time between writes to the log file, a duration (`500ms`). The default is 0: every entry is written as soon as it is logged. With a value (100ms to 1s is typical) entries are collected and written together, which is about ten times cheaper for a busy logger. The last entries (up to that long) are lost if the JVM is killed; they are written at a normal exit and by `ParleyLogger.closeLogFiles()`. |
 
 The first logger to open a file decides its size limit. If writing to the log file fails (a full
 disk, say), that is reported once on `System.err`, and again when writing works again.
@@ -310,22 +321,26 @@ server socket from these properties (or the matching setters). Each name is read
 prefix, `propertyName(name)`: `<prefix>.port` and so on, the class name unless the server sets another
 prefix (a POP3 server's is `parley.mail.pop3`):
 
+Times (`acceptTimeout`, `socketTimeout`, `soLinger`, `loginFailureDelay`, `loginTimeLimit`) are
+durations: a whole number with `ms`, `s`, `m`, `h` or `d` (`30s`), or a number of milliseconds (see
+[Durations](#durations)).
+
 | Property | Default | Meaning |
 |---|---|---|
 | `port` | `9200` | Port to listen on (`0` = any free port) |
 | `bindAddress` | all addresses | Address to listen on |
 | `backlog` | `0` (system default) | Connection queue length |
-| `acceptTimeout` | `60000` ms | `accept()` timeout, so the loop can check `stopping` |
-| `socketTimeout` | `60000` ms | Read timeout set by `configure(socket)` |
-| `isSoLinger` / `soLinger` | `false` / `10` s | SO_LINGER set by `configure(socket)` |
+| `acceptTimeout` | `60s` | `accept()` timeout, so the loop can check `stopping` |
+| `socketTimeout` | `60s` | Read timeout set by `configure(socket)` |
+| `isSoLinger` / `soLinger` | `false` / `10s` | SO_LINGER set by `configure(socket)` |
 | `keepAlive` | `false` | SO_KEEPALIVE set by `configure(socket)`, to notice peers that vanish |
 | `tcpNoDelay` | `false` | TCP_NODELAY set by `configure(socket)`, so small writes aren't delayed |
 | `maxConnections` | `0` (no limit) | Limit used by `tryAcquireConnection()` (see below) |
 | `maxConnectionsPerClient` | `0` (no limit) | Connections one client address may have at once, so one host can't take every place (`tryAcquireClient(address)`, `tryAcquireConnection(address)`) |
 | `allowedClients` | everyone | Client addresses and networks allowed to connect, e.g. `127.0.0.1 10.0.0.0/8 ::1` (`isClientAllowed(address)`) |
-| `loginFailureDelay` | `1000` ms | How long a server should wait after a failed login (see below) |
+| `loginFailureDelay` | `1s` | How long a server should wait after a failed login (see below) |
 | `maxLoginAttempts` | `3` | Failed logins before the connection should be closed (see below) |
-| `loginTimeLimit` | `0` ms (no limit) | How long a connection may take to log in (see below) |
+| `loginTimeLimit` | `0` (no limit) | How long a connection may take to log in (see below) |
 | `secure` | `false` | Use SSL (see [SSL](#ssl)) |
 
 ```java
