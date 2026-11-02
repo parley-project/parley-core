@@ -1,0 +1,42 @@
+# The settings parley-core reads, for the start-up check of parley-net's servers
+# (format: parley-net's KnownSettings). Add a name here when code here starts reading it.
+
+parley.core.forceTlsVersion
+parley.core.logger
+parley.core.virtualThreads
+
+# plugins (PluginFolders): the shared folders, and each application's own path
+parley.plugins.path
+parley.plugins.systemRoot
+parley.plugins.userRoot
+parley.*.plugins.path
+
+# Every server's, under its prefix (AbstractCoreServer, SecureBaseObject, SocketOptions)
+<server>.port
+<server>.bindAddress
+<server>.backlog
+<server>.acceptTimeout
+<server>.allowedClients
+<server>.maxConnections
+<server>.maxConnectionsPerClient
+<server>.maxLoginAttempts
+<server>.loginFailureDelay
+<server>.loginTimeLimit
+<server>.secure
+<server>.keyStoreName
+<server>.keyStoreType
+<server>.keyStorePassword
+<server>.algorithm
+<server>.protocol
+<server>.keepAlive
+<server>.isSoLinger
+<server>.soLinger
+<server>.socketTimeout
+<server>.tcpNoDelay
+
+# A server's log (ParleyLogger, under the server's name)
+<server>.logLevel
+<server>.logFile
+<server>.logFileCount
+<server>.logFileMaxSize
+<server>.logFlushInterval

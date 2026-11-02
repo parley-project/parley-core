@@ -36,6 +36,9 @@
 
 ### Added
 
+- **The settings this module reads are listed** in `META-INF/parley/settings.list`, so a Parley server's
+  start-up check (parley-net's `KnownSettings`, To-Do 2.16) knows them and warns only about a setting
+  nothing reads. parley-net's KnownSettingsTest checks the list has every name the code here spells out.
 - **Plugins** (`us.bringardner.parley.plugin`): `Plugins.load(app, restricted)` loads the jars in an
   application's plugin folders (system before user, application's own before shared; settings
   `parley.plugins.systemRoot`, `parley.plugins.userRoot`, `parley.plugins.path` and
