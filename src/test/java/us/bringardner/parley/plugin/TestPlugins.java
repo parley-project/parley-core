@@ -164,7 +164,7 @@ public class TestPlugins {
 		return new PluginFolders("app", restricted, null, sys, null, false, tmp.toString(), null);
 	}
 
-	@SuppressWarnings({"rawtypes", "unchecked"})
+	@SuppressWarnings("rawtypes")
 	private static List<String> greetings() {
 		List<String> ret = new ArrayList<>();
 		for(java.util.function.Supplier s : Plugins.providers(java.util.function.Supplier.class, null)) {
