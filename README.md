@@ -372,8 +372,9 @@ connection ends. The server doesn't call them itself, so without that nothing is
 
 The login settings are the same kind of thing: `AbstractCoreServer` keeps them (`getLoginFailureDelay()`,
 `getMaxLoginAttempts()`, `isTooManyLoginFailures(failures)`, `getLoginTimeLimit()`, and their setters), and
-the protocol server that handles logins applies them. A server can change the defaults by overriding
-`getDefaultLoginFailureDelay()` and `getDefaultMaxLoginAttempts()`.
+parley-net's servers (`Server` and `NioServer`) apply them to every login through a session's
+`authenticate`, so a protocol doesn't apply them itself. A server can change the defaults by overriding
+`getDefaultLoginFailureDelay()`, `getDefaultMaxLoginAttempts()` and `getDefaultLoginTimeLimit()`.
 
 `SocketClient` is the client side: `new SocketClient(useSSL).getSocket(host, port)` returns a
 socket configured with the same `socketTimeout`, `isSoLinger`, `soLinger`, `keepAlive` and
