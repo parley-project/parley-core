@@ -2,6 +2,13 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-07: shared wildcard matching)
+
+- **`util.Wildcards`**: `*` and `?` patterns, the whole text matching. `matches(pattern, text)` compares exactly;
+  `matches(pattern, text, escapes, folding)` lets `\` escape `*`, `?` and `\`, and compares characters through a
+  `Wildcards.CaseFolding` (`EXACT`, `ASCII`, or the protocol's own, such as IRC's case mapping).
+  `hasWildcards(pattern, escapes)`.
+
 ### Changed (2026-11-02: durations and log settings, To-Do 2.19)
 
 - **Durations with units**: every length of time is a whole number with `ms`, `s`, `m`, `h` or `d` (`30s`,
