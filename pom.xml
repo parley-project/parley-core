@@ -251,7 +251,7 @@
 								<configuration>
 									<executable>java</executable>
 									<classpathScope>test</classpathScope>
-									<commandlineArgs>-classpath %classpath org.openjdk.jmh.Main ${jmh.args}</commandlineArgs>
+									<commandlineArgs>-Dbenchmark.dir=${project.build.directory} -classpath %classpath us.bringardner.parley.core.benchmark.LoggerBenchmarkRunner ${jmh.args}</commandlineArgs>
 								</configuration>
 							</execution>
 						</executions>
