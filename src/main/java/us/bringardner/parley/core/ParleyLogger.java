@@ -79,10 +79,10 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 */
 	public static final String PROPERTY_LOG_FLUSH_INTERVAL = "parley.log.flushInterval";
 	/**
-	 * The default level is ERROR so that errors are never silently discarded.
-	 * Set {@value #PROPERTY_LOG_LEVEL} (NONE, ERROR, WARN, INFO, DEBUG) to change it.
+	 * The default level is WARN, so errors and warnings (something may be wrong) are never silently
+	 * discarded. Set {@value #PROPERTY_LOG_LEVEL} (NONE, ERROR, WARN, INFO, DEBUG) to change it.
 	 */
-	public static final Level DEFAULT_LEVEL = Level.ERROR;
+	public static final Level DEFAULT_LEVEL = Level.WARN;
 	
 
 	//  DateTimeFormatter is immutable and thread safe, so no locking is required.
