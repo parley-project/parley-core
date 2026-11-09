@@ -648,7 +648,8 @@ public class ParleyLogger extends BaseObject implements ILogger {
 
 	private boolean isEnabled(ILogger.Level target) {
 		Level current = level;
-		return current != ILogger.Level.NONE && current.ordinal() >= target.ordinal();
+		//  NONE is ordinal 0 and target is never NONE, so this is false for NONE
+		return current.ordinal() >= target.ordinal();
 	}
 
 	public void setLevel(Level level) {
