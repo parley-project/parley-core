@@ -27,6 +27,9 @@
 		<parley.moduleName>us.bringardner.parley.core</parley.moduleName>
 		<junit.version>5.11.4</junit.version>
 		<log4j.version>2.24.3</log4j.version>
+		<jmh.version>1.37</jmh.version>
+		<!-- JMH options for 'mvn -Pbenchmark test' (see LoggerBenchmark) -->
+		<jmh.args>LoggerBenchmark -rf json -rff ${project.build.directory}/logger-benchmark.json</jmh.args>
 	</properties>
 
 	<build>
@@ -188,5 +191,69 @@
 			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- JMH, for the benchmarks in src/test/java (LoggerBenchmark). The annotation processor that
+		     generates the benchmark code is only used by the benchmark profile, so normal builds and
+		     surefire are not affected. -->
+		<dependency>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-core</artifactId>
+			<version>${jmh.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
+	<profiles>
+		<!--
+		  Performance benchmarks (JMH): mvn -Pbenchmark test
+		  Compiles the tests with JMH's annotation processor and runs the benchmarks in place of the
+		  unit tests. JMH options can be given with -Djmh.args="..." (for example -Djmh.args="-h" for help).
+		-->
+		<profile>
+			<id>benchmark</id>
+			<properties>
+				<skipTests>true</skipTests>
+				<jacoco.skip>true</jacoco.skip>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>default-testCompile</id>
+								<configuration>
+									<annotationProcessorPaths>
+										<path>
+											<groupId>org.openjdk.jmh</groupId>
+											<artifactId>jmh-generator-annprocess</artifactId>
+											<version>${jmh.version}</version>
+										</path>
+									</annotationProcessorPaths>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.5.0</version>
+						<executions>
+							<execution>
+								<id>run-benchmarks</id>
+								<phase>test</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>java</executable>
+									<classpathScope>test</classpathScope>
+									<commandlineArgs>-classpath %classpath org.openjdk.jmh.Main ${jmh.args}</commandlineArgs>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
