@@ -65,7 +65,7 @@ public class Mailer extends BaseObject {
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
 | | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
 | | `ILogger` | The logging interface used everywhere in Parley. |
-| | `ParleyLogger`, `Log4JLogger`, `JulLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`. |
+| | `ParleyLogger`, `Log4JLogger`, `JulLogger`, `SystemLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`, the JDK's `System.Logger`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
 | | `SocketOptions` | The timeout, linger, keep-alive and no-delay settings shared by servers and clients. |
@@ -263,7 +263,7 @@ an open file); the next entry opens the file again.
 Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`, `WARNING`, `TRACE`,
 `ALL`, `FINE`, `FINER` and `FINEST`. An invalid level is reported and the default is used.
 
-### log4j 2 and java.util.logging
+### log4j 2, java.util.logging and System.Logger
 
 `Log4JLogger` calls log4j through reflection, so parley-core does not depend on it. Add
 `log4j-api` and `log4j-core` to your own project and configure log4j as usual
@@ -272,6 +272,14 @@ Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`, `WARNING`
 `JulLogger` uses `java.util.logging`. It reads the file named by `java.util.logging.config.file`,
 or `/JulLogging.properties` from the class path. This happens once, when the first
 `JulLogger` is created. `resources/JulLogging.properties` is an example.
+
+`SystemLogger` uses the JDK's `System.Logger`. It is only chosen when you set
+`parley.core.logger=us.bringardner.parley.core.SystemLogger`. Where the messages go is up to the
+logging system behind `System.Logger`: `java.util.logging` unless your application adds another,
+such as SLF4J's `slf4j-jdk-platform-logging` or log4j's `log4j-jpl`, which then gets Parley's
+messages directly. `System.Logger` can't set a level, so `setLevel` sets one of `SystemLogger`'s
+own, in front of the logging system's (`setLevel(null)` removes it). It also can't name the code
+that logged, so the logging system may report `SystemLogger` or `BaseObject` as the source.
 
 ## Threads and servers
 
