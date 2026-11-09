@@ -245,7 +245,7 @@ It is configured with these properties, by these names (see [Properties](#proper
 
 | Property | Meaning |
 |---|---|
-| `parley.log.level` | The level for all loggers. The default is `ERROR`. |
+| `parley.log.level` | The level for all loggers. The default is `WARN`. |
 | `parley.log.level.<name>` | The level for one logger, or every logger under a name; the nearest one set wins. A logger's name here is its name without `us.bringardner.parley.` (or `us.bringardner.`): `parley.log.level.pop3=DEBUG` sets every POP3 logger, `parley.log.level.pop3.server.Pop3Server` one class; other names are used whole (`parley.log.level.com.example.Mailer`). |
 | `parley.log.file` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
 | `parley.log.fileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `<file>.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |

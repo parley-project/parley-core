@@ -2,6 +2,13 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Changed (2026-11-09: default log level WARN, To-Do 19)
+
+- **ParleyLogger's default level is WARN** (was ERROR). Parley's lock services and other classes that
+  logged through java.util.logging, whose default showed warnings, now log through ILogger; with
+  ERROR as the default their warnings (a lost lease, a damaged queue file) would have gone unseen.
+  Set `parley.log.level=ERROR` for the old behavior.
+
 ### Added (2026-11-08: System.Logger, To-Do 19.3)
 
 - **`SystemLogger`**: an `ILogger` that writes to the JDK's `System.Logger`, chosen with
