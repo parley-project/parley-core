@@ -54,11 +54,12 @@ import us.bringardner.parley.core.SystemLogger;
  * <pre>
  *   mvn -Pbenchmark test
  * </pre>
+ * (it builds in target/benchmark, apart from Eclipse's and the normal build's classes)
  * and pass JMH options with -Djmh.args, for example a quick run of only the disabled-debug cases:
  * <pre>
  *   mvn -Pbenchmark test -Djmh.args="LoggerBenchmark.debug -wi 2 -i 3 -w 1s -r 1s"
  * </pre>
- * The results are printed at the end and written to target/logger-benchmark.json
+ * The results are printed at the end and written to target/benchmark/logger-benchmark.json
  * (which <a href="https://jmh.morethan.io">jmh.morethan.io</a> can chart).
  * <p>
  * Each logger is set up the same way, in its own JVM (fork): level INFO, writing to a file in a
