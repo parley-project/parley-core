@@ -38,10 +38,17 @@ import org.openjdk.jmh.runner.options.CommandLineOptions;
 
 /**
  * Runs the benchmarks (taking the same options as JMH's own Main) and then prints how the loggers
- * compare: for each benchmark the fastest logger is 1.00 and the others are shown as multiples of
- * its time (2.50 = takes two and a half times as long). Lower is better.
- * <p>
- * The comparison is also written to relative.txt in the build folder (target/benchmark), given by
+ * compare, in up to three tables:
+ * <ol>
+ * <li>{@link LoggerBenchmark}, every entry written as soon as it is logged: for each benchmark the
+ *     fastest logger is 1.00 and the others are multiples of its time (2.50 = takes two and a half
+ *     times as long). Lower is better.</li>
+ * <li>{@link BatchedLoggerBenchmark}, entries collected and written together: the same, among the
+ *     batched loggers.</li>
+ * <li>Batched against not batched: each logger's batched time divided by its own time writing every
+ *     entry at once (0.25 = four times faster with batching).</li>
+ * </ol>
+ * The tables are also written to relative.txt in the build folder (target/benchmark), given by
  * the system property benchmark.dir.
  */
 public class LoggerBenchmarkRunner {
@@ -57,39 +64,115 @@ public class LoggerBenchmarkRunner {
 
 		Collection<RunResult> results = new Runner(options).run();
 
-		String table = relativeTable(results);
+		String tables = relativeTables(results);
 		System.out.println();
-		System.out.print(table);
+		System.out.print(tables);
 
 		String dir = System.getProperty("benchmark.dir");
 		if( dir != null ) {
 			Path file = Paths.get(dir, "relative.txt");
-			writeFile(file, table);
+			writeFile(file, tables);
 			System.out.println("Comparison saved to " + file);
 		}
 	}
 
-	/**
-	 * @return a table with a row for each benchmark and a column for each logger, each logger's
-	 *         time divided by the fastest logger's time for that benchmark
-	 */
-	static String relativeTable(Collection<RunResult> results) {
-		//  benchmark method -> logger -> score (ns/op)
-		Map<String, Map<String, Double>> scores = new TreeMap<>();
-		List<String> loggers = new ArrayList<>();
+	/** Scores (ns/op) of one benchmark class: benchmark method -&gt; logger -&gt; score, and the loggers in run order. */
+	static final class Scores {
+		final Map<String, Map<String, Double>> byMethod = new TreeMap<>();
+		final List<String> loggers = new ArrayList<>();
 
-		for (RunResult r : results) {
-			String benchmark = r.getParams().getBenchmark();
-			benchmark = benchmark.substring(benchmark.lastIndexOf('.') + 1);
-			String logger = r.getParams().getParam("loggerType");
+		void add(String method, String logger, double score) {
 			if( !loggers.contains(logger) ) {
 				loggers.add(logger);
 			}
-			scores.computeIfAbsent(benchmark, k -> new LinkedHashMap<>()).put(logger, r.getPrimaryResult().getScore());
+			byMethod.computeIfAbsent(method, k -> new LinkedHashMap<>()).put(logger, score);
 		}
 
+		Double get(String method, String logger) {
+			Map<String, Double> row = byMethod.get(method);
+			return row == null ? null : row.get(logger);
+		}
+	}
+
+	/**
+	 * @return the tables described in the class comment, for the benchmark classes that were run
+	 */
+	static String relativeTables(Collection<RunResult> results) {
+		Scores each = new Scores();
+		Scores batched = new Scores();
+
+		for (RunResult r : results) {
+			String benchmark = r.getParams().getBenchmark();
+			String method = benchmark.substring(benchmark.lastIndexOf('.') + 1);
+			String className = benchmark.substring(0, benchmark.lastIndexOf('.'));
+			Scores target = className.endsWith("." + BatchedLoggerBenchmark.class.getSimpleName()) ? batched : each;
+			target.add(method, r.getParams().getParam("loggerType"), r.getPrimaryResult().getScore());
+		}
+
+		StringBuilder out = new StringBuilder();
+		if( !each.byMethod.isEmpty() ) {
+			out.append(fastestTable("Every entry written as soon as it is logged", each));
+		}
+		if( !batched.byMethod.isEmpty() ) {
+			if( out.length() > 0 ) {
+				out.append('\n');
+			}
+			out.append(fastestTable("Entries collected and written together (batched)", batched));
+		}
+		if( !each.byMethod.isEmpty() && !batched.byMethod.isEmpty() ) {
+			out.append('\n').append(batchedTable(each, batched));
+		}
+		return out.toString();
+	}
+
+	/** Each logger's time divided by the fastest logger's time, for each benchmark. */
+	private static String fastestTable(String title, Scores scores) {
+		Map<String, Map<String, String>> cells = new TreeMap<>();
+		for (Map.Entry<String, Map<String, Double>> row : scores.byMethod.entrySet()) {
+			double fastest = Double.MAX_VALUE;
+			for (double score : row.getValue().values()) {
+				fastest = Math.min(fastest, score);
+			}
+			Map<String, String> line = new LinkedHashMap<>();
+			for (Map.Entry<String, Double> e : row.getValue().entrySet()) {
+				line.put(e.getKey(), format(e.getValue() / fastest));
+			}
+			cells.put(row.getKey(), line);
+		}
+		return table(title + ": relative time (1.00 = the fastest logger for that benchmark; lower is better)",
+				cells, scores.loggers);
+	}
+
+	/** Each logger's batched time divided by its time writing every entry at once. */
+	private static String batchedTable(Scores each, Scores batched) {
+		Map<String, Map<String, String>> cells = new TreeMap<>();
+		for (Map.Entry<String, Map<String, Double>> row : batched.byMethod.entrySet()) {
+			Map<String, String> line = new LinkedHashMap<>();
+			for (Map.Entry<String, Double> e : row.getValue().entrySet()) {
+				Double unbatched = each.get(row.getKey(), e.getKey());
+				if( unbatched != null ) {
+					line.put(e.getKey(), format(e.getValue() / unbatched));
+				}
+			}
+			if( !line.isEmpty() ) {
+				cells.put(row.getKey(), line);
+			}
+		}
+		if( cells.isEmpty() ) {
+			return "";
+		}
+		return table("Batched against every entry written at once: batched time / unbatched time "
+				+ "(0.25 = four times faster batched; lower is better)", cells, batched.loggers);
+	}
+
+	private static String format(double value) {
+		return String.format(Locale.ROOT, "%.2f", value);
+	}
+
+	/** A title, then a row for each benchmark and a column for each logger ("-" where there is no value). */
+	private static String table(String title, Map<String, Map<String, String>> cells, List<String> loggers) {
 		int nameWidth = "Benchmark".length();
-		for (String b : scores.keySet()) {
+		for (String b : cells.keySet()) {
 			nameWidth = Math.max(nameWidth, b.length());
 		}
 		int colWidth = 8;
@@ -98,22 +181,17 @@ public class LoggerBenchmarkRunner {
 		}
 
 		StringBuilder out = new StringBuilder();
-		out.append("Relative time (1.00 = the fastest logger for that benchmark; lower is better)\n\n");
+		out.append(title).append("\n\n");
 		out.append(pad("Benchmark", nameWidth, false));
 		for (String l : loggers) {
 			out.append("  ").append(pad(l, colWidth, true));
 		}
 		out.append('\n');
 
-		for (Map.Entry<String, Map<String, Double>> row : scores.entrySet()) {
-			double fastest = Double.MAX_VALUE;
-			for (double score : row.getValue().values()) {
-				fastest = Math.min(fastest, score);
-			}
+		for (Map.Entry<String, Map<String, String>> row : cells.entrySet()) {
 			out.append(pad(row.getKey(), nameWidth, false));
 			for (String l : loggers) {
-				Double score = row.getValue().get(l);
-				String cell = score == null ? "-" : String.format(Locale.ROOT, "%.2f", score / fastest);
+				String cell = row.getValue().getOrDefault(l, "-");
 				out.append("  ").append(pad(cell, colWidth, true));
 			}
 			out.append('\n');
