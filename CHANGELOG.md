@@ -2,6 +2,14 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-08: System.Logger, To-Do 19.3)
+
+- **`SystemLogger`**: an `ILogger` that writes to the JDK's `System.Logger`, chosen with
+  `parley.core.logger=us.bringardner.parley.core.SystemLogger` (never on its own). An application on
+  SLF4J/Logback or log4j adds that library's `System.Logger` provider and gets Parley's messages
+  directly. `setLevel` sets a level of its own in front of the logging system's, since `System.Logger`
+  can't set one; the logging system may report `SystemLogger` or `BaseObject` as a message's source.
+
 ### Added (2026-11-07: shared wildcard matching)
 
 - **`util.Wildcards`**: `*` and `?` patterns, the whole text matching. `matches(pattern, text)` compares exactly;
