@@ -61,6 +61,8 @@ import us.bringardner.parley.core.SystemLogger;
  * </pre>
  * The results are printed at the end and written to target/benchmark/logger-benchmark.json
  * (which <a href="https://jmh.morethan.io">jmh.morethan.io</a> can chart).
+ * After JMH's own table, {@link LoggerBenchmarkRunner} prints how the loggers compare (the fastest
+ * for each benchmark is 1.00, the others multiples of its time), also saved to target/benchmark/relative.txt.
  * <p>
  * Each logger is set up the same way, in its own JVM (fork): level INFO, writing to a file in a
  * temporary folder with a similar one-line layout, flushed after every entry, rotated at 50 MB with
