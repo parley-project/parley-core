@@ -24,6 +24,12 @@ import java.util.function.Supplier;
  * The objective of the BaseObject class is to provide a common foundation for all, non trivial classes.
  * It provides for the simplest and most fundamental functions required by most non trivial classes 
  * such as logging and property management.
+ *
+ * Logging: Parley code logs with logDebug, logInfo, logWarn and logError. Each object has a level
+ * (setLogLevel, else the parley.log.level settings); what it lets through is written with the JDK's
+ * System.Logger, so the application decides what writes the messages (java.util.logging by default,
+ * or whatever System.LoggerFinder it installs, such as parley-logging's). When no level is set,
+ * everything goes to the System.Logger, which decides.
  *  
  *
  * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>
@@ -56,10 +62,6 @@ public class BaseObject {
 	 * hundred BaseObject classes went past, so files were read again and again.
 	 */
 	public static final int DEFAULT_MAX_PROPERTIES = 1000;
-	public static final String PROPERTY_LOGGER = "parley.core.logger";
-	/** Log4j is told this is a logging "wrapper" class, so it reports the code that called logError (etc.) as the caller. */
-	private static final String FQCN = BaseObject.class.getName();
-	private static volatile Class<?>   loggerClass = null;
 
 	//  Cached for a properties file that was looked for and not found. Never changed.
 	private static final Properties MISSING = new Properties();
@@ -87,10 +89,6 @@ public class BaseObject {
 	};
 
 	private static volatile int maxProperties = DEFAULT_MAX_PROPERTIES;
-
-	//  Loggers are shared by name (like log4j and java.util.logging) so we don't create
-	//  (and initialize) a new ILogger for every object instance. Never trimmed: see findLogger().
-	private static final ConcurrentHashMap<String, ILogger> loggers = new ConcurrentHashMap<>();
 
 	private volatile boolean supportPrefixProperty = true;
 
@@ -127,14 +125,6 @@ public class BaseObject {
 	}
 
 	/**
-	 * Remove all cached ILoggers. The next call to getLogger will create new ones.
-	 * Objects that have already obtained a logger will continue to use it.
-	 */
-	public static void clearLoggerCache() {
-		loggers.clear();
-	}
-
-	/**
 	 * Clear the properties cache.
 	 * 
 	 * Properties are cache to improve performance when accessing them.
@@ -154,8 +144,6 @@ public class BaseObject {
 	private volatile String propertyPrefix;
 	/** This object's own settings, or null: read them from the system properties */
 	private volatile Properties configuration;
-
-	private volatile ILogger logger ;
 
 
 	/**
@@ -245,6 +233,7 @@ public class BaseObject {
 	 */
 	public void setConfiguration(Properties configuration) {
 		this.configuration = configuration;
+		this.levelSetting = null;
 	}
 
 	/**
@@ -266,6 +255,7 @@ public class BaseObject {
 	public void useConfigurationOf(BaseObject other) {
 		if( other != null ) {
 			this.configuration = other.getConfiguration();
+			this.levelSetting = null;
 		}
 	}
 
@@ -713,78 +703,207 @@ public class BaseObject {
 		return "true".equalsIgnoreCase(tmp.trim());
 	}
 
-	/**
-	 * Determine the class to use to implement the ILogger api.
-	 * The objective the this class is to implement logging without creating 
-	 * runtime dependencies to third party libraries. 
-	 * 
-	 * 1)  The System.property "parley.core.logger" is defined, that class is used
-	 *     (JulLogger, SystemLogger or any other ILogger).
-	 * 2)  If the log4j2 API (org.apache.logging.log4j) is in the class path, Log4JLogger is used.
-	 * 3)  The default is ParleyLogger.
-	 * 
-	 * @return the Class used to create ILoggers
-	 */
-	protected static Class<?> getLoggerClass() {
-		if( loggerClass == null ) {
-			synchronized (BaseObject.class) {
-				if( loggerClass == null ) {
-					String  tmp = System.getProperty(PROPERTY_LOGGER);
-					if( tmp != null ) {
-						try {
-							Class<?> cls = Class.forName(tmp);
-							if( ILogger.class.isAssignableFrom(cls)) {
-								loggerClass = cls;
-							} else {
-								System.err.println("Defined Logger does not implement "+ILogger.class.getName()+". "+PROPERTY_LOGGER+"="+tmp);
-							}
-						} catch (ClassNotFoundException e) {
-							System.err.println("Defined Logger is not availible. "+PROPERTY_LOGGER+"="+tmp);
-						}
-					}
-					if( loggerClass == null ) 	{						
-						//  Only with a log4j implementation, the log4j API alone would ignore our parley.log.level and parley.log.file settings
-						loggerClass = Log4JLogger.isLog4jProviderAvailable() ? Log4JLogger.class : ParleyLogger.class;
-					}
-				}
-			}
-		}
+	// ------------------------------------------------------------------ logging
 
-		return loggerClass;
+	/**
+	 * Sets the level of Parley's loggers when nothing else does (NONE, ERROR, WARN, INFO, DEBUG, see
+	 * {@link LogLevel#parse(String, LogLevel)}). One logger, or every logger under a name, gets its own
+	 * with a longer name: {@code parley.log.level.pop3}, {@code parley.log.level.pop3.server.Pop3Server};
+	 * the nearest one set wins (see {@link #levelName(String)}). Read with {@link #getProperty(String)},
+	 * so an object with a configuration of its own ({@link #setConfiguration(Properties)}) reads it there.
+	 * @since 2.0.0
+	 */
+	public static final String PROPERTY_LOG_LEVEL = "parley.log.level";
+
+	private static final String PARLEY_PACKAGE = "us.bringardner.parley.";
+	private static final String BRINGARDNER_PACKAGE = "us.bringardner.";
+
+	/** The System.Loggers, by name, shared by every object that logs under the name. */
+	private static final ConcurrentHashMap<String, System.Logger> systemLoggers = new ConcurrentHashMap<>();
+
+	/** Changed by {@link #refreshLogLevels()}: the {@value #PROPERTY_LOG_LEVEL} settings are read again. */
+	private static volatile int levelGeneration;
+
+	/** The level found in the settings, and the {@link #levelGeneration} it was found in. */
+	private static final class LevelSetting {
+		final LogLevel level;
+		final int generation;
+
+		LevelSetting(LogLevel level, int generation) {
+			this.level = level;
+			this.generation = generation;
+		}
 	}
 
+	/** Set with setLogLevel; null when it isn't set */
+	private volatile LogLevel logLevel;
+	/** What the parley.log.level settings say (its level may be null: nothing is set); null until it's looked up */
+	private volatile LevelSetting levelSetting;
+	private volatile System.Logger systemLogger;
 
 	/**
-	 * @return ILogger for this Object
+	 * Set this object's level. It wins over the {@value #PROPERTY_LOG_LEVEL} settings, and is this
+	 * object's alone: other objects of the same class keep theirs.
+	 *
+	 * @param level the level, NONE to log nothing, or null to go back to the settings
+	 * @since 2.0.0
 	 */
-	public ILogger getLogger() {
-		ILogger ret = logger;
-		if( ret == null ) {
-			ret = getLogger(getClass().getName());
-			logger = ret;
-		}
+	public void setLogLevel(LogLevel level) {
+		this.logLevel = level;
+	}
 
+	/**
+	 * @return the level set with {@link #setLogLevel(LogLevel)}, or null when none is (the
+	 *         {@value #PROPERTY_LOG_LEVEL} settings then decide, and when they don't either, the installed
+	 *         System.Logger does)
+	 * @since 2.0.0
+	 */
+	public LogLevel getLogLevel() {
+		return logLevel;
+	}
+
+	/**
+	 * Read the {@value #PROPERTY_LOG_LEVEL} settings again: every object looks up its level again the
+	 * next time it logs. An object reads them once, when it first logs, so call this after changing them.
+	 * @since 2.0.0
+	 */
+	public static void refreshLogLevels() {
+		levelGeneration++;
+	}
+
+	/**
+	 * The name this object logs under: the name of its System.Logger, and the name its
+	 * {@value #PROPERTY_LOG_LEVEL} settings are looked up by. The default is the class name.
+	 *
+	 * @return the logger name
+	 * @since 2.0.0
+	 */
+	protected String getLoggerName() {
+		return getClass().getName();
+	}
+
+	/**
+	 * The name a logger's level is set under, after {@value #PROPERTY_LOG_LEVEL}: its name without
+	 * {@code us.bringardner.parley.} (or {@code us.bringardner.}), so the logger
+	 * us.bringardner.parley.pop3.server.Pop3Server is {@code pop3.server.Pop3Server}, and
+	 * {@code parley.log.level.pop3} sets every POP3 logger. Other names are used as they are.
+	 *
+	 * @param loggerName a logger's name (usually a class name), or null
+	 * @return the name to look its level up by, "" for none
+	 * @since 2.0.0
+	 */
+	public static String levelName(String loggerName) {
+		if( loggerName == null ) {
+			return "";
+		}
+		String n = loggerName.trim();
+		if( n.startsWith(PARLEY_PACKAGE) ) {
+			return n.substring(PARLEY_PACKAGE.length());
+		}
+		if( n.startsWith(BRINGARDNER_PACKAGE) ) {
+			return n.substring(BRINGARDNER_PACKAGE.length());
+		}
+		return n;
+	}
+
+	/**
+	 * @return the level that decides what this object logs: the one set with
+	 *         {@link #setLogLevel(LogLevel)}, else the nearest {@value #PROPERTY_LOG_LEVEL} setting, else
+	 *         null (everything goes to the System.Logger, which decides)
+	 */
+	private LogLevel effectiveLevel() {
+		LogLevel ret = logLevel;
+		if( ret != null ) {
+			return ret;
+		}
+		LevelSetting s = levelSetting;
+		int generation = levelGeneration;
+		if( s == null || s.generation != generation ) {
+			s = new LevelSetting(findLevel(), generation);
+			levelSetting = s;
+		}
+		return s.level;
+	}
+
+	/** The nearest level set: parley.log.level.NAME, then each shorter name, then parley.log.level; null for none. */
+	private LogLevel findLevel() {
+		String n = levelName(getLoggerName());
+		String v = null;
+		while( v == null && !n.isEmpty() ) {
+			v = setting(PROPERTY_LOG_LEVEL + "." + n);
+			int dot = n.lastIndexOf('.');
+			n = dot < 0 ? "" : n.substring(0, dot);
+		}
+		if( v == null ) {
+			v = setting(PROPERTY_LOG_LEVEL);
+		}
+		return v == null ? null : LogLevel.parse(v, null);
+	}
+
+	private String setting(String name) {
+		String v = getProperty(name);
+		return v == null || v.trim().isEmpty() ? null : v;
+	}
+
+	/**
+	 * @return the System.Logger this object writes to (shared by every object with the same
+	 *         {@link #getLoggerName() name})
+	 * @since 2.0.0
+	 */
+	protected System.Logger getSystemLogger() {
+		System.Logger ret = systemLogger;
+		if( ret == null ) {
+			String name = getLoggerName();
+			if( name == null ) {
+				name = "";
+			}
+			ret = systemLoggers.get(name);
+			if( ret == null ) {
+				//  Not computeIfAbsent: the installed LoggerFinder may be loaded now, and it may log
+				ret = System.getLogger(name);
+				System.Logger prev = systemLoggers.putIfAbsent(name, ret);
+				if( prev != null ) {
+					ret = prev;
+				}
+			}
+			systemLogger = ret;
+		}
 		return ret;
 	}
 
-	/**
-	 * @param logger ILogger for this object. 
-	 */
-	public void setLogger(ILogger logger) {
-		this.logger = logger;
+	/** Whether this object's level lets a message at this level through (the System.Logger is not asked). */
+	private boolean levelAllows(LogLevel level) {
+		LogLevel l = effectiveLevel();
+		return l == null || l.allows(level);
+	}
+
+	private boolean isEnabled(LogLevel level) {
+		return levelAllows(level) && getSystemLogger().isLoggable(level.toSystemLevel());
+	}
+
+	private void log(LogLevel level, String msg) {
+		if( levelAllows(level) ) {
+			getSystemLogger().log(level.toSystemLevel(), msg);
+		}
+	}
+
+	private void log(LogLevel level, String msg, Throwable error) {
+		if( levelAllows(level) ) {
+			getSystemLogger().log(level.toSystemLevel(), msg, error);
+		}
+	}
+
+	private void log(LogLevel level, Supplier<String> msg) {
+		if( levelAllows(level) ) {
+			getSystemLogger().log(level.toSystemLevel(), msg);
+		}
 	}
 
 	/**
 	 * @param msg The message to log if Debug logging is enabled
 	 */
 	public void logDebug(String msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.debug(msg);
-		}
+		log(LogLevel.DEBUG, msg);
 	}
 
 	/**
@@ -794,13 +913,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Debug logging is enabled
 	 */
 	public void logDebug(Supplier<String> msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg);
-		} else {
-			l.debug(msg);
-		}
+		log(LogLevel.DEBUG, msg);
 	}
 
 	/**
@@ -808,27 +921,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Debug is enabled 
 	 */
 	public void logDebug(String msg, Throwable error) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg, error);
-		} else {
-			l.debug(msg,error);
-		}
+		log(LogLevel.DEBUG, msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Error logging is enabled
 	 */
 	public void logError(String msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.error(msg);
-		}
-
+		log(LogLevel.ERROR, msg);
 	}
 
 	/**
@@ -837,13 +937,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Error logging is enabled
 	 */
 	public void logError(Supplier<String> msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg);
-		} else {
-			l.error(msg);
-		}
+		log(LogLevel.ERROR, msg);
 	}
 
 	/**
@@ -851,27 +945,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Error is enabled 
 	 */
 	public void logError(String msg, Throwable error) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg, error);
-		} else {
-			l.error(msg,error);
-		}
-
+		log(LogLevel.ERROR, msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Warn logging is enabled
 	 */
 	public void logWarn(String msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.warn(msg);
-		}
+		log(LogLevel.WARN, msg);
 	}
 
 	/**
@@ -880,13 +961,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Warn logging is enabled
 	 */
 	public void logWarn(Supplier<String> msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg);
-		} else {
-			l.warn(msg);
-		}
+		log(LogLevel.WARN, msg);
 	}
 
 	/**
@@ -894,26 +969,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Warn is enabled 
 	 */
 	public void logWarn(String msg, Throwable error) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg, error);
-		} else {
-			l.warn(msg,error);
-		}
+		log(LogLevel.WARN, msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Info logging is enabled
 	 */
 	public void logInfo(String msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.info(msg);
-		}
+		log(LogLevel.INFO, msg);
 	}
 
 	/**
@@ -922,13 +985,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Info logging is enabled
 	 */
 	public void logInfo(Supplier<String> msg) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg);
-		} else {
-			l.info(msg);
-		}
+		log(LogLevel.INFO, msg);
 	}
 
 	/**
@@ -936,89 +993,34 @@ public class BaseObject {
 	 * @param error log the stack trace of the error if Info is enabled 
 	 */
 	public void logInfo(String msg, Throwable error) {
-		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (a subclass may override the ILogger methods, so only Log4JLogger itself)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg, error);
-		} else {
-			l.info(msg,error);
-		}
+		log(LogLevel.INFO, msg, error);
 	}
 
-
 	/**
-	 * @return true is Debug logging is enabled
+	 * @return true if Debug logging is enabled: this object's level lets it through, and so does its System.Logger
 	 */
 	public boolean isDebugEnabled() {
-		return getLogger().isDebugEnabled();
+		return isEnabled(LogLevel.DEBUG);
 	}
 
 	/**
-	 * @return true is Error logging is enabled
+	 * @return true if Error logging is enabled
 	 */
-
 	public boolean isErrorEnabled() {
-		return getLogger().isErrorEnabled();
+		return isEnabled(LogLevel.ERROR);
 	}
 
 	/**
-	 * @return true is Warn logging is enabled
+	 * @return true if Warn logging is enabled
 	 */
 	public boolean isWarnEnabled() {
-		return getLogger().isWarnEnabled();
+		return isEnabled(LogLevel.WARN);
 	}
 
 	/**
-	 * @return true is Info logging is enabled
+	 * @return true if Info logging is enabled
 	 */
-
 	public boolean isInfoEnabled() {
-		return getLogger().isInfoEnabled();
+		return isEnabled(LogLevel.INFO);
 	}
-
-
-
-	/**
-	 * Find the ILogger for this name.  
-	 * ILoggers are cached by name and shared by all objects that use the same name.
-	 * 
-	 * @param name
-	 * @return the ILogger associated with the given name.
-	 */
-	protected ILogger getLogger(String name) {
-		return findLogger(name);
-	}
-
-	/**
-	 * Find (or create) the shared ILogger for this name.
-	 * <p>
-	 * Every ILogger created is kept until {@link #clearLoggerCache()} is called (like log4j and
-	 * java.util.logging, which also keep their loggers), so use names from a fixed set, such as class
-	 * names. A name built from changing data (a user, a session or a request id) adds a logger for
-	 * every value, and the cache grows for as long as the application runs.
-	 * 
-	 * @param name
-	 * @return the ILogger associated with the given name.
-	 */
-	public static ILogger findLogger(String name) {
-		if( name == null ) {
-			name = "";
-		}
-		ILogger ret = loggers.get(name);
-		if( ret == null ) {
-			// Create outside of any lock (ILogger.init may read properties or configuration files).
-			// Not using computeIfAbsent because creating a logger could recursively request another logger.
-			Class<?> loggerClass = getLoggerClass();
-			try {
-				ILogger tmp = (ILogger) loggerClass.getDeclaredConstructor().newInstance();
-				tmp.init(name);
-				ILogger prev = loggers.putIfAbsent(name, tmp);
-				ret = prev == null ? tmp : prev;
-			} catch (Exception e) {
-				throw new IllegalStateException("Fatal error occured attempting to create ILogger. loggerClass="+loggerClass,e);
-			}
-		}
-		return ret;
-	}
-
 }

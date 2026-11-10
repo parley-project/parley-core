@@ -3,16 +3,9 @@ package us.bringardner.parley.core.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,131 +17,13 @@ import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.BaseThread;
-import us.bringardner.parley.core.ParleyLogger;
-import us.bringardner.parley.core.ILogger;
-import us.bringardner.parley.core.ILogger.Level;
-import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.util.AbstractCoreServer;
-import us.bringardner.parley.core.util.LogHelper;
 
 /**
- * Tests for the reliability fixes (logger defaults and caching, thread visibility,
+ * Tests for the reliability fixes (thread visibility,
  * property cache concurrency, property parsing, class loader search).
  */
 public class TestReliability {
-
-	@Test
-	public void testDefaultLoggerLogsErrors() {
-		ParleyLogger logger = new ParleyLogger();
-		logger.init("test.default.level");
-		assertEquals(ParleyLogger.DEFAULT_LEVEL, logger.getLevel());
-		assertTrue(logger.isErrorEnabled(), "Errors must be logged by default");
-		assertFalse(logger.isDebugEnabled());
-	}
-
-	@Test
-	public void testParseLevel() {
-		assertEquals(Level.DEBUG, ParleyLogger.parseLevel("debug", Level.ERROR));
-		assertEquals(Level.WARN, ParleyLogger.parseLevel(" Warning ", Level.ERROR));
-		assertEquals(Level.ERROR, ParleyLogger.parseLevel("FATAL", Level.NONE));
-		assertEquals(Level.NONE, ParleyLogger.parseLevel("off", Level.ERROR));
-		//  An invalid value must not throw (that would break every BaseObject)
-		assertEquals(Level.INFO, ParleyLogger.parseLevel("not-a-level", Level.INFO));
-		assertEquals(Level.INFO, ParleyLogger.parseLevel(null, Level.INFO));
-	}
-
-	//  Test classes extend TestCoreBase (not BaseObject directly) so TestCore.testClassLoader, 
-	//  which searches the class path for direct subclasses of BaseObject, is not affected.
-	static class LoggerUser extends TestCoreBase {}
-
-	@Test
-	public void testLoggersAreSharedByName() {
-		LoggerUser a = new LoggerUser();
-		LoggerUser b = new LoggerUser();
-		assertSame(a.getLogger(), b.getLogger(), "Objects of the same class should share one ILogger");
-		assertSame(BaseObject.findLogger(LoggerUser.class.getName()), a.getLogger());
-
-		LogHelper h1 = new LogHelper("shared.helper.name");
-		LogHelper h2 = new LogHelper("shared.helper.name");
-		assertSame(h1.getLogger(), h2.getLogger());
-	}
-
-	@Test
-	public void testLazyMessageIsNotBuiltWhenDisabled() {
-		ParleyLogger logger = new ParleyLogger();
-		logger.init("test.lazy");
-		logger.setLevel(Level.ERROR);
-		AtomicInteger calls = new AtomicInteger();
-		logger.debug(() -> "debug " + calls.incrementAndGet());
-		assertEquals(0, calls.get(), "The message supplier must not be called when debug is disabled");
-
-		PrintStream out = System.out;
-		ByteArrayOutputStream bo = new ByteArrayOutputStream();
-		logger.setOut(new PrintStream(bo, true));
-		try {
-			logger.error(() -> "error " + calls.incrementAndGet());
-		} finally {
-			logger.setOut(null);
-			System.setOut(out);
-		}
-		assertEquals(1, calls.get());
-		assertTrue(new String(bo.toByteArray()).contains("ERROR test.lazy - error 1"));
-	}
-
-	@Test
-	public void testLogFileIsSharedAndAppended() throws IOException {
-		File file = File.createTempFile("parley-core", ".log");
-		file.deleteOnExit();
-		Files.write(file.toPath(), "existing line\n".getBytes());
-
-		String key = ParleyLogger.PROPERTY_LOG_FILE;
-		System.setProperty(key, file.getAbsolutePath());
-		try {
-			ParleyLogger one = new ParleyLogger();
-			one.init("file.one");
-			ParleyLogger two = new ParleyLogger();
-			two.init("file.two");
-			assertSame(one.getOut(), two.getOut(), "Loggers writing to the same file should share one stream");
-			one.error("from one");
-			two.error("from two", new IOException("test exception"));
-		} finally {
-			System.clearProperty(key);
-		}
-
-		String content = new String(Files.readAllBytes(file.toPath()));
-		assertTrue(content.startsWith("existing line"), "The log file must be appended, not truncated");
-		assertTrue(content.contains("file.one - from one"));
-		assertTrue(content.contains("file.two - from two"));
-		//  errors (and stack traces) go to the log file, not System.out
-		assertTrue(content.contains("java.io.IOException: test exception"));
-	}
-
-	@Test
-	public void testJulLoggerDoesNotResetConfiguration() {
-		java.util.logging.Logger app = java.util.logging.Logger.getLogger("test.jul.app");
-		app.setLevel(java.util.logging.Level.FINE);
-		java.util.logging.Handler h = new java.util.logging.ConsoleHandler();
-		app.addHandler(h);
-		try {
-			for (int idx = 0; idx < 5; idx++) {
-				new JulLogger().init("test.jul.other" + idx);
-			}
-			assertEquals(java.util.logging.Level.FINE, app.getLevel(), "Creating a JulLogger must not reset other loggers");
-			assertTrue(Arrays.asList(app.getHandlers()).contains(h), "Creating a JulLogger must not remove handlers");
-		} finally {
-			app.removeHandler(h);
-		}
-	}
-
-	@Test
-	public void testJulLoggerInheritedLevel() {
-		JulLogger logger = new JulLogger();
-		logger.init("test.jul.inherited.child");
-		java.util.logging.Logger.getLogger("test.jul.inherited.child").setLevel(null);
-		//  must not throw a NullPointerException when the level is inherited
-		ILogger.Level level = logger.getLevel();
-		assertTrue(level != null);
-	}
 
 	@Test
 	public void testBaseThreadStopRestartAndJoin() throws InterruptedException {

@@ -1,108 +1,55 @@
 package us.bringardner.parley.core.test;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.ResourceBundle;
 
-import us.bringardner.parley.core.ILogger;
+import us.bringardner.parley.core.LogLevel;
 
 /**
- * An ILogger that records every message it is asked to log (respecting its level)
- * so tests can verify what was logged without parsing console output.
- * Only the abstract methods are implemented, so the ILogger default (Supplier) methods are exercised as-is.
+ * A System.Logger that records every message it is given ("LEVEL message [error message]"),
+ * when its level lets it through (DEBUG, everything, unless a test sets another). parley-core's tests
+ * install {@link RecordingLoggerFinder}, so this is what BaseObject writes to; get one by name with
+ * {@link RecordingLoggerFinder#get(String)}.
  */
-public class RecordingLogger implements ILogger {
+public class RecordingLogger implements System.Logger {
 
 	public final List<String> messages = Collections.synchronizedList(new ArrayList<>());
-	private volatile Level level = Level.DEBUG;
-	private volatile String name;
+	private final String name;
+	private volatile LogLevel level = LogLevel.DEBUG;
 
-	public String getName() {
-		return name;
-	}
-
-	private void record(Level target, String msg, Throwable error) {
-		if( isEnabled(target)) {
-			messages.add(target+" "+msg+(error == null ? "" : " "+error.getMessage()));
-		}
-	}
-
-	private boolean isEnabled(Level target) {
-		return level != Level.NONE && level.ordinal() >= target.ordinal();
-	}
-
-	@Override
-	public void init(String name) {
+	public RecordingLogger(String name) {
 		this.name = name;
 	}
 
 	@Override
-	public void setLevel(Level level) {
-		this.level = level == null ? Level.NONE : level;
+	public String getName() {
+		return name;
+	}
+
+	public void setLevel(LogLevel level) {
+		this.level = level == null ? LogLevel.NONE : level;
 	}
 
 	@Override
-	public Level getLevel() {
-		return level;
+	public boolean isLoggable(Level target) {
+		return level.allows(LogLevel.of(target));
 	}
 
 	@Override
-	public void info(String msg) {
-		record(Level.INFO, msg, null);
+	public void log(Level target, ResourceBundle bundle, String msg, Throwable error) {
+		if( isLoggable(target) ) {
+			messages.add(LogLevel.of(target)+" "+msg+(error == null ? "" : " "+error.getMessage()));
+		}
 	}
 
 	@Override
-	public void info(String msg, Throwable error) {
-		record(Level.INFO, msg, error);
-	}
-
-	@Override
-	public boolean isInfoEnabled() {
-		return isEnabled(Level.INFO);
-	}
-
-	@Override
-	public void error(String msg) {
-		record(Level.ERROR, msg, null);
-	}
-
-	@Override
-	public void error(String msg, Throwable error) {
-		record(Level.ERROR, msg, error);
-	}
-
-	@Override
-	public boolean isErrorEnabled() {
-		return isEnabled(Level.ERROR);
-	}
-
-	@Override
-	public void debug(String msg) {
-		record(Level.DEBUG, msg, null);
-	}
-
-	@Override
-	public void debug(String msg, Throwable error) {
-		record(Level.DEBUG, msg, error);
-	}
-
-	@Override
-	public boolean isDebugEnabled() {
-		return isEnabled(Level.DEBUG);
-	}
-
-	@Override
-	public void warn(String msg) {
-		record(Level.WARN, msg, null);
-	}
-
-	@Override
-	public void warn(String msg, Throwable error) {
-		record(Level.WARN, msg, error);
-	}
-
-	@Override
-	public boolean isWarnEnabled() {
-		return isEnabled(Level.WARN);
+	public void log(Level target, ResourceBundle bundle, String format, Object... params) {
+		if( isLoggable(target) ) {
+			String msg = params == null || params.length == 0 ? format : MessageFormat.format(format, params);
+			messages.add(LogLevel.of(target)+" "+msg);
+		}
 	}
 }

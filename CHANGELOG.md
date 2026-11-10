@@ -2,6 +2,25 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Changed (2026-11-10: logging through System.Logger, To-Do 19.5)
+
+- **Parley logs through the JDK's `System.Logger`**: `BaseObject`'s `logDebug`, `logInfo`, `logWarn`
+  and `logError` write to the `System.Logger` of the object's logger name, so the application decides
+  what writes the messages (java.util.logging unless it installs a `System.LoggerFinder`).
+- **Removed**: `ILogger`, `JulLogger`, `Log4JLogger`, `SystemLogger`, the `parley.core.logger` setting,
+  and `BaseObject`'s `getLogger()`, `getLogger(String)`, `setLogger`, `findLogger`, `getLoggerClass`
+  and `clearLoggerCache`. `ParleyLogger` moved to the new module parley-logging
+  (`us.bringardner.parley.logging`), with a `System.LoggerFinder` that applications include.
+- **Per-object levels**: `BaseObject.setLogLevel(LogLevel)` and `getLogLevel()` replace
+  `getLogger().setLevel/getLevel`; one server's level no longer changes every server of its class.
+  The levels are the new enum `LogLevel` (was `ILogger.Level`).
+- **`parley.log.level` moved into `BaseObject`**: an object without a level of its own uses the
+  nearest `parley.log.level.<name>` setting (read with `getProperty`, so from its configuration when
+  it has one); with none, nothing is held back and the `System.Logger` decides.
+  `BaseObject.refreshLogLevels()` reads the settings again; `levelName(name)` moved from ParleyLogger.
+- **`getLoggerName()`** (protected) names an object's logger; `LogHelper` overrides it.
+- log4j is no longer a test dependency.
+
 ### Changed (2026-11-09: default log level WARN, To-Do 19)
 
 - **ParleyLogger's default level is WARN** (was ERROR). Parley's lock services and other classes that
