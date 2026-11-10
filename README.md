@@ -7,7 +7,7 @@ The Swing date and time pickers that used to be here are now a separate library,
 [swing-widgets](https://github.com/parley-project/swing-widgets) (`us.bringardner:bringardner-swing-widgets`).
 
 - **Java 11** or later (virtual threads are used on Java 21+ when you ask for them)
-- **No runtime dependencies.** log4j 2 is used when it is on the class path, but it is never required.
+- **No runtime dependencies.** Logging goes through the JDK's `System.Logger`, so the application chooses what writes it.
 - Apache License 2.0
 
 ## Contents
@@ -39,7 +39,8 @@ parley-core is on Maven Central, so no extra repository is needed:
 > parley-core was previously `us.bringardner:bjl_core` (BjlCore), with packages under
 > `us.bringardner.core`. Moving over means changing the dependency and replacing
 > `us.bringardner.core` with `us.bringardner.parley.core` in imports; 2.0.0 renamed the settings
-> too (the log's are `parley.log.*`). `BjlLogger` is now `ParleyLogger`.
+> too (the log's are `parley.log.*`). `BjlLogger` became `ParleyLogger`, which is now in
+> [parley-logging](https://github.com/parley-project/parley-logging).
 > See [CHANGELOG.md](CHANGELOG.md) for everything that changed.
 
 A class gets properties and logging by extending `BaseObject`:
@@ -64,8 +65,7 @@ public class Mailer extends BaseObject {
 | | `SecureBaseObject` | Adds key store, trust manager and `SSLContext` handling. |
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
 | | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
-| | `ILogger` | The logging interface used everywhere in Parley. |
-| | `ParleyLogger`, `Log4JLogger`, `JulLogger`, `SystemLogger` | `ILogger` implementations: built in, log4j 2, `java.util.logging`, the JDK's `System.Logger`. |
+| | `LogLevel` | The levels Parley logs at: `NONE`, `ERROR`, `WARN`, `INFO`, `DEBUG`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
 | | `SocketOptions` | The timeout, linger, keep-alive and no-delay settings shared by servers and clients. |
@@ -224,62 +224,40 @@ name. `us.bringardner.parley.core.util.Durations` parses and formats them (`form
 
 ## Logging
 
-Every `BaseObject` has `logDebug`, `logInfo`, `logWarn` and `logError` methods (each with a
+Parley code logs through `BaseObject`: `logDebug`, `logInfo`, `logWarn` and `logError` (each with a
 `Throwable` variant), plus `isDebugEnabled()` and so on. The `Supplier` versions, such as
-`logDebug(() -> "...")`, only build the message when that level is enabled.
+`logDebug(() -> "...")`, only build the message when that level is enabled. A class that can't extend
+`BaseObject` uses a `util.LogHelper`.
 
-The logger is chosen once, the first time one is needed:
+What an object lets through is decided by its level:
 
-1. The class named by the system property `parley.core.logger`, if it implements `ILogger`
-2. `Log4JLogger`, if log4j 2 (`log4j-api`) is on the class path
-3. `ParleyLogger` otherwise
+1. The level set on the object with `setLogLevel(LogLevel)`. It is the object's alone: one server's
+   level doesn't change another's of the same class. `setLogLevel(null)` removes it; `getLogLevel()`
+   returns it (null when none is set).
+2. Otherwise the nearest `parley.log.level` setting for the object's logger name (below), looked up
+   with `getProperty`, so an object with a configuration of its own reads it there.
+3. Otherwise nothing is held back.
 
-Loggers are shared by name (the class name by default), so objects of the same class use one
-logger. `BaseObject.findLogger(name)` returns the logger for any name, and
-`setLogger(...)` replaces it for one object. Levels are `DEBUG`, `INFO`, `WARN`, `ERROR` and `NONE`.
-
-### ParleyLogger
-
-The built-in logger writes `MM-dd-yyyy HH:mm:ss.SSS [thread] LEVEL name - message` lines.
-It is configured with these properties, by these names (see [Properties](#properties)):
+What it lets through is written with the JDK's `System.Logger` of the object's logger name (the class
+name; `LogHelper`'s name), and that logger decides too: the application chooses what writes the
+messages. With nothing else installed that is `java.util.logging`, which shows `INFO` and above on
+`System.err`. An application can install another `System.LoggerFinder`: Parley's own,
+[parley-logging](https://github.com/parley-project/parley-logging) (`ParleyLogger`, with the
+`parley.log.file` settings), or log4j's `log4j-jpl`, SLF4J's `slf4j-jdk-platform-logging` and so on.
+Library code never includes one: a provider takes over all `System.Logger` output in its JVM.
 
 | Property | Meaning |
 |---|---|
-| `parley.log.level` | The level for all loggers. The default is `WARN`. |
-| `parley.log.level.<name>` | The level for one logger, or every logger under a name; the nearest one set wins. A logger's name here is its name without `us.bringardner.parley.` (or `us.bringardner.`): `parley.log.level.pop3=DEBUG` sets every POP3 logger, `parley.log.level.pop3.server.Pop3Server` one class; other names are used whole (`parley.log.level.com.example.Mailer`). |
-| `parley.log.file` | A file to append to, or `System.out` (the default) or `System.err`. Loggers that name the same file share it. |
-| `parley.log.fileMaxSize` | Start a new log file when it would grow past this size: bytes, or with a `K`, `M` or `G` suffix (`10M`). The old file is renamed `<file>.1` (the previous `.1` becomes `.2` and so on). The default is no limit. |
-| `parley.log.fileCount` | How many old log files to keep, 5 by default. With 0 the log file is started again from empty. |
-| `parley.log.flushInterval` | The time between writes to the log file, a duration (`500ms`). The default is 0: every entry is written as soon as it is logged. With a value (100ms to 1s is typical) entries are collected and written together, which is about ten times cheaper for a busy logger. The last entries (up to that long) are lost if the JVM is killed; they are written at a normal exit and by `ParleyLogger.closeLogFiles()`. |
+| `parley.log.level` | The level for every object that has none of its own. |
+| `parley.log.level.<name>` | The level for one logger, or every logger under a name; the nearest one set wins. A logger's name here is its name without `us.bringardner.parley.` (or `us.bringardner.`): `parley.log.level.pop3=DEBUG` sets every POP3 logger, `parley.log.level.pop3.server.Pop3Server` one class; other names are used whole (`parley.log.level.com.example.Mailer`). `BaseObject.levelName(name)` gives that name. |
 
-The first logger to open a file decides its size limit. If writing to the log file fails (a full
-disk, say), that is reported once on `System.err`, and again when writing works again.
+An object reads the settings once, the first time it logs; `BaseObject.refreshLogLevels()` makes every
+object read them again. Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`,
+`WARNING`, `TRACE`, `ALL`, `FINE`, `FINER` and `FINEST`. An invalid level is reported on
+`System.err` and ignored.
 
-If another program moves or deletes the log file (logrotate, say), a new one is started under the same
-name within a second; a file emptied in place (`copytruncate`) is written to from its new end.
-`ParleyLogger.closeLogFiles()` flushes and closes all log files so they can be moved (Windows won't move
-an open file); the next entry opens the file again.
-
-Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`, `WARNING`, `TRACE`,
-`ALL`, `FINE`, `FINER` and `FINEST`. An invalid level is reported and the default is used.
-
-### log4j 2, java.util.logging and System.Logger
-
-`Log4JLogger` calls log4j through reflection, so parley-core does not depend on it. Add
-`log4j-api` and `log4j-core` to your own project and configure log4j as usual
-(`resources/log4j2.xml` is a working example). Setting a level from code needs `log4j-core`.
-
-`JulLogger` uses `java.util.logging`. It reads the file named by `java.util.logging.config.file`,
-or `/JulLogging.properties` from the class path. This happens once, when the first
-`JulLogger` is created. `resources/JulLogging.properties` is an example.
-
-`SystemLogger` uses the JDK's `System.Logger`. It is only chosen when you set
-`parley.core.logger=us.bringardner.parley.core.SystemLogger`. Where the messages go is up to the
-logging system behind `System.Logger`: `java.util.logging` unless your application adds another,
-such as SLF4J's `slf4j-jdk-platform-logging` or log4j's `log4j-jpl`, which then gets Parley's
-messages directly. `System.Logger` can't set a level, so `setLevel` sets one of `SystemLogger`'s
-own, in front of the logging system's (`setLevel(null)` removes it). It also can't name the code
-that logged, so the logging system may report `SystemLogger` or `BaseObject` as the source.
+`System.Logger` has no way to name the code that logged, so a logging system that shows the source
+(java.util.logging's default format, say) shows `BaseObject` for Parley's messages.
 
 ## Threads and servers
 
@@ -499,7 +477,7 @@ coverage report to `target/site/jacoco/index.html`.
   `META-INF/versions/21`. The library itself still runs on Java 11.
 - Tests named `*IT` run in `mvn verify` against the built jar, so on JDK 21+ they exercise the Java 21 classes.
 - The SSL server test uses `keytool` (from the JDK) to create a test key store if needed.
-- log4j is a test dependency, so the `Log4JLogger` tests run against the real library.
+- The tests install their own `System.LoggerFinder` (`RecordingLoggerFinder`, in the test resources), so they can check what was logged.
 
 ## Releasing
 

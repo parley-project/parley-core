@@ -26,7 +26,6 @@
 package us.bringardner.parley.core.util;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.ILogger;
 
 /**
  * The objective of the LogHelper is to provide an easy way 
@@ -60,8 +59,8 @@ public class LogHelper extends BaseObject {
 	 * Logging and properties for a name. Properties are looked up with the name as the prefix
 	 * (for example name.Port) and without it (Port).
 	 * <p>
-	 * The logger for the name is kept for as long as the application runs, so don't build the name
-	 * from changing data (see {@link BaseObject#findLogger(String)}).
+	 * The System.Logger for the name is kept for as long as the application runs, so don't build the
+	 * name from changing data.
 	 * 
 	 * @param name the logger name and property prefix.
 	 */
@@ -77,7 +76,7 @@ public class LogHelper extends BaseObject {
 	}
 
 	@Override
-	protected ILogger getLogger(String name) {		
-		return super.getLogger(this.name);
+	protected String getLoggerName() {
+		return name;
 	}
 }
