@@ -30,6 +30,9 @@ import java.util.function.Supplier;
  * System.Logger, so the application decides what writes the messages (java.util.logging by default,
  * or whatever System.LoggerFinder it installs, such as parley-logging's). When no level is set,
  * everything goes to the System.Logger, which decides.
+ * System.Logger can't name the code that logged, so a logging system that shows the source class and
+ * method shows BaseObject; the logger name (getLoggerName, the object's class) is the one to show. The
+ * README's Logging section has a java.util.logging format that does.
  *  
  *
  * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>

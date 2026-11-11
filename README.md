@@ -257,7 +257,20 @@ object read them again. Level names from other frameworks also work: `OFF`, `FAT
 `System.err` and ignored.
 
 `System.Logger` has no way to name the code that logged, so a logging system that shows the source
-(java.util.logging's default format, say) shows `BaseObject` for Parley's messages.
+(the class and method that logged) shows `BaseObject` for every Parley message. The logger name is
+the one to show: it is the class of the object that logged. java.util.logging's default format shows
+the source, so when it writes the messages, give it a format that shows the logger name instead, in
+its `logging.properties` or as a system property:
+
+```
+java.util.logging.SimpleFormatter.format=%1$tFT%1$tT.%1$tL%1$tz %4$s %3$s - %5$s%6$s%n
+```
+
+```
+2026-11-11T06:55:12.036-0500 WARNING us.bringardner.parley.pop3.server.Pop3Server - Login failed
+```
+
+The method name isn't logged; an error's stack trace shows where it happened.
 
 ## Threads and servers
 
