@@ -59,6 +59,9 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	private volatile Boolean virtual;
 
 	private volatile UncaughtExceptionHandler uncaughtExceptionHandler;
+
+	/** Set with {@link #setLogContext(String)}; null for none */
+	private volatile String logContext;
 	
 	public BaseThread() {
 		super();
@@ -304,11 +307,35 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	 * method that threw left running true, and start() refused to start the thread again.
 	 */
 	private void runThread() {
-		try {
+		//  Everything logged on this thread starts with the ID, whichever object logs it. Without an
+		//  ID of its own the thread's is left as it is (a null scope, which try-with-resources accepts).
+		String id = logContext;
+		try (LogContext.Scope scope = id == null ? null : LogContext.enter(id)) {
 			run();
 		} finally {
 			running = false;
 		}
+	}
+
+	/**
+	 * Sets the ID of the work this thread does (a server's session, say). Everything logged on the
+	 * thread starts with it ({@link LogContext}), and so do this object's own messages when another
+	 * thread logs them. Set it before {@link #start()}.
+	 *
+	 * @param logContext the ID, or null for none
+	 * @since 2.0.0
+	 */
+	public void setLogContext(String logContext) {
+		this.logContext = logContext;
+	}
+
+	/**
+	 * @return the ID set with {@link #setLogContext(String)}, or null
+	 * @since 2.0.0
+	 */
+	@Override
+	public String getLogContext() {
+		return logContext;
 	}
 
 	/**
