@@ -272,6 +272,32 @@ java.util.logging.SimpleFormatter.format=%1$tFT%1$tT.%1$tL%1$tz %4$s %3$s - %5$s
 
 The method name isn't logged; an error's stack trace shows where it happened.
 
+### The ID of the work: `LogContext`
+
+To follow one piece of work through a log (a server's session, say), give it an ID. `LogContext`
+keeps the ID of the work the current thread is doing, and `BaseObject` puts it in front of every
+message logged on that thread, whichever object logs it. It is part of the message, so every
+logging system shows it:
+
+```java
+try (LogContext.Scope scope = LogContext.enter("pop3-4127")) {
+    store.open(user);   // anything logged in here starts with [pop3-4127]
+}
+```
+
+```
+2026-11-11T07:01:23.512-05:00 [main] ERROR us.bringardner.parley.mail.MailStore - [pop3-4127] Can't open the maildrop
+```
+
+- Closing the scope puts back what the thread had before, so a thread that serves many connections
+  never keeps the ID of work it has finished.
+- A `BaseThread` runs with the ID given to `setLogContext(id)`.
+- The ID stays with its thread. For work handed to another thread, `LogContext.wrap(task)` makes a
+  task that carries the ID along.
+- An object can have an ID of its own (`getLogContext()`), used when the thread has none.
+
+parley-net's servers give every session an ID this way; see its README.
+
 ## Threads and servers
 
 `BaseThread` wraps a `Thread` that you can start, stop and start again. Your `run()` sets the

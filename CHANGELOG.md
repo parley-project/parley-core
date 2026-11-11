@@ -2,6 +2,15 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-11: an ID for the work a thread does, To-Do 19.7)
+
+- **`LogContext`**: the ID of the work the current thread is doing (a server's session, say).
+  `BaseObject` puts it in front of every message logged on the thread (`[pop3-4127] message`),
+  whichever object logs it, so one session can be followed through a log. `LogContext.enter(id)`
+  sets it until the returned scope is closed; `LogContext.wrap(task)` carries it to another thread.
+- **`BaseThread.setLogContext(String)`**: the thread runs with that ID. **`BaseObject.getLogContext()`**
+  (protected, null by default) is an object's own ID, used when the thread has none.
+
 ### Changed (2026-11-10: logging through System.Logger, To-Do 19.5)
 
 - **Parley logs through the JDK's `System.Logger`**: `BaseObject`'s `logDebug`, `logInfo`, `logWarn`
