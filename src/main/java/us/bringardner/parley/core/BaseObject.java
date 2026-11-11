@@ -29,7 +29,8 @@ import java.util.function.Supplier;
  * (setLogLevel, else the parley.log.level settings); what it lets through is written with the JDK's
  * System.Logger, so the application decides what writes the messages (java.util.logging by default,
  * or whatever System.LoggerFinder it installs, such as parley-logging's). When no level is set,
- * everything goes to the System.Logger, which decides.
+ * everything goes to the System.Logger, which decides. A message starts with the ID of the work
+ * it belongs to ([pop3-4127]) when the thread has one, see LogContext.
  * System.Logger can't name the code that logged, so a logging system that shows the source class and
  * method shows BaseObject; the logger name (getLoggerName, the object's class) is the one to show. The
  * README's Logging section has a java.util.logging format that does.
@@ -884,21 +885,55 @@ public class BaseObject {
 		return levelAllows(level) && getSystemLogger().isLoggable(level.toSystemLevel());
 	}
 
+	/**
+	 * The ID of the work this object does, put in front of its messages when the thread that logs
+	 * has none ({@link LogContext}): a connection that logs outside its handler's calls names
+	 * itself here. The default is none.
+	 *
+	 * @return the ID, or null
+	 * @since 2.0.0
+	 */
+	protected String getLogContext() {
+		return null;
+	}
+
+	/** The ID to put in front of a message: the thread's ({@link LogContext}), else this object's; null for none. */
+	private String logContextNow() {
+		String id = LogContext.get();
+		if( id == null ) {
+			id = getLogContext();
+			if( id != null && id.isEmpty() ) {
+				id = null;
+			}
+		}
+		return id;
+	}
+
+	private static String withContext(String id, String msg) {
+		return id == null ? msg : "["+id+"] "+msg;
+	}
+
 	private void log(LogLevel level, String msg) {
 		if( levelAllows(level) ) {
-			getSystemLogger().log(level.toSystemLevel(), msg);
+			getSystemLogger().log(level.toSystemLevel(), withContext(logContextNow(), msg));
 		}
 	}
 
 	private void log(LogLevel level, String msg, Throwable error) {
 		if( levelAllows(level) ) {
-			getSystemLogger().log(level.toSystemLevel(), msg, error);
+			getSystemLogger().log(level.toSystemLevel(), withContext(logContextNow(), msg), error);
 		}
 	}
 
 	private void log(LogLevel level, Supplier<String> msg) {
 		if( levelAllows(level) ) {
-			getSystemLogger().log(level.toSystemLevel(), msg);
+			//  The ID is read now, on the thread that logs; the message is still built only if it is written
+			String id = logContextNow();
+			if( id == null || msg == null ) {
+				getSystemLogger().log(level.toSystemLevel(), msg);
+			} else {
+				getSystemLogger().log(level.toSystemLevel(), () -> withContext(id, msg.get()));
+			}
 		}
 	}
 
