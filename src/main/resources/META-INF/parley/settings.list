@@ -2,7 +2,6 @@
 # (format: parley-net's KnownSettings). Add a name here when code here starts reading it.
 
 parley.core.forceTlsVersion
-parley.core.logger
 parley.core.virtualThreads
 
 # plugins (PluginFolders): the shared folders, and each application's own path
@@ -34,11 +33,7 @@ parley.*.plugins.path
 <server>.socketTimeout
 <server>.tcpNoDelay
 
-# The log (ParleyLogger): every logger's level, one name's (a logger's name without
-# us.bringardner.parley., e.g. parley.log.level.pop3), and the log file
+# Log levels (BaseObject): every logger's level, and one name's (a logger's name without
+# us.bringardner.parley., e.g. parley.log.level.pop3). The log file settings are parley-logging's.
 parley.log.level
 parley.log.level.**
-parley.log.file
-parley.log.fileCount
-parley.log.fileMaxSize
-parley.log.flushInterval

@@ -17,7 +17,6 @@ import javax.net.ServerSocketFactory;
 
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
 import us.bringardner.parley.core.util.SocketClient;
@@ -180,7 +179,7 @@ public class TestUtilCoverage {
 			assertEquals("127.0.0.1", new Server().getBindAddr().getHostAddress());
 			System.setProperty(key, "[not-a-valid-address");
 			Server svr = new Server();
-			svr.setLogger(new RecordingLogger());
+			svr.setLogLevel(us.bringardner.parley.core.LogLevel.NONE);
 			assertThrows(IllegalStateException.class, svr::getBindAddr);
 		} finally {
 			System.clearProperty(key);
@@ -200,10 +199,10 @@ public class TestUtilCoverage {
 
 			System.setProperty(bind, "[not-a-valid-address");
 			Server bad = new Server();
-			RecordingLogger rec = new RecordingLogger();
-			bad.setLogger(rec);
+			RecordingLogger rec = RecordingLoggerFinder.get(Server.class.getName());
+			rec.messages.clear();
 			assertThrows(IllegalStateException.class, bad::getBindAddr);
-			assertTrue(rec.messages.get(0).startsWith("ERROR Cannot create bindAddress"), "The error should be logged");
+			assertTrue(rec.messages.stream().anyMatch(m -> m.startsWith("ERROR Cannot create bindAddress")), "The error should be logged: "+rec.messages);
 		} finally {
 			System.clearProperty(linger);
 			System.clearProperty(bind);
@@ -214,12 +213,6 @@ public class TestUtilCoverage {
 	}
 
 	// ---------------- LogHelper ----------------
-
-	@Test
-	public void testLogHelperForClass() {
-		LogHelper helper = new LogHelper(TestUtilCoverage.class);
-		assertSame(BaseObject.findLogger(TestUtilCoverage.class.getName()), helper.getLogger());
-	}
 
 	@Test
 	public void testLogHelperProperties() {
