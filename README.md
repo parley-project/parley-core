@@ -65,6 +65,7 @@ public class Mailer extends BaseObject {
 | | `SecureBaseObject` | Adds key store, trust manager and `SSLContext` handling. |
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
 | | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
+| | `NamedExecutors` | Single, scheduled, cached and fixed executors, and threads, all named daemon threads. |
 | | `LogLevel` | The levels Parley logs at: `NONE`, `ERROR`, `WARN`, `INFO`, `DEBUG`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
@@ -338,6 +339,9 @@ parley-core is a multi-release jar. On Java 21 and later a `BaseThread` can run 
 - A virtual thread is always a daemon thread at normal priority.
 - `NamedThreadFactory` gives executors named threads: `new NamedThreadFactory("poller")` makes
   `poller`, `poller-2` ..., `NamedThreadFactory.numbered("worker-")` makes `worker-1`, `worker-2` ...
+- `NamedExecutors` makes the executors Parley code needs with that factory: `singleThread("name")`,
+  `singleThreadScheduled`, `cached`, `fixed(name, n)` and `fixed(name, n, idle)`, and `start(name, task)` for
+  a thread of its own. Use these, not `new Thread` or `Executors.newXxx`; the caller shuts them down.
 
 ### Servers
 

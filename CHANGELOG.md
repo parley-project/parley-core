@@ -2,6 +2,13 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-21: named executors, To-Do 19.7)
+
+- **`NamedExecutors`**: the executors and threads Parley code needs, made with a `NamedThreadFactory`
+  (named daemon threads): `singleThread`, `singleThreadScheduled`, `cached`, `fixed(name, threads)`,
+  `fixed(name, threads, idle)` (idle threads end), `newThread` and `start`. Code in Parley makes its
+  threads here, not with `new Thread` or the bare `java.util.concurrent.Executors`.
+
 ### Added (2026-11-11: an ID for the work a thread does, To-Do 19.7)
 
 - **`LogContext`**: the ID of the work the current thread is doing (a server's session, say).
