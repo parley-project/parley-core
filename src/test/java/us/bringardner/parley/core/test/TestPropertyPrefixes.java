@@ -156,7 +156,7 @@ public class TestPropertyPrefixes {
 	@Test
 	public void anObjectWithoutPrefixesUsesTheNameAlone() {
 		PrefixTarget s = server(settings("shared", "bare"));
-		s.setSupportPrefixProperty(false);
+		s.setPropertyPrefix("");
 		assertEquals("bare", s.getInheritedProperty("shared"));
 	}
 

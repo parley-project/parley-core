@@ -86,7 +86,7 @@ public class TestPropertyLookupPlan {
 	@Test
 	public void noPrefixSearchesOnlyTheName() {
 		B b = new B();
-		b.setSupportPrefixProperty(false);
+		b.setPropertyPrefix("");
 		assertEquals("mode", b.propertyName("mode"));
 		System.setProperty(B_NAME+".mode", "prefixed");
 		try {

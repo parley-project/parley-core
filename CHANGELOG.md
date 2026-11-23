@@ -4,6 +4,8 @@
 
 ### Added (2026-11-23: settings the servers of a protocol share)
 
+- **`isSupportPrefixProperty` and `setSupportPrefixProperty` are removed.** An empty prefix does the same: an object whose
+  settings have no prefix calls `setPropertyPrefix("")`, and `getPropertyPrefix()` is then `""` (it was `null`).
 - **`setPropertyPrefix` and `setPropertyPrefixes` are `public`** (they were `protected`), so the code that makes an
   object can set where its settings are read from. A class that overrides `setPropertyPrefix` must now make the
   override `public`.

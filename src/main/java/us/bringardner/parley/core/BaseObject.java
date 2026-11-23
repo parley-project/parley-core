@@ -94,8 +94,6 @@ public class BaseObject {
 
 	private static volatile int maxProperties = DEFAULT_MAX_PROPERTIES;
 
-	private volatile boolean supportPrefixProperty = true;
-
 	/**
 	 * @param maxSize the most properties files kept in the cache for each class loader, 0 (or less) for no limit. 
 	 *  When there are more, some (not necessarily the least recently used) are dropped and read again when needed.
@@ -198,15 +196,10 @@ public class BaseObject {
 	 * setting's name. The default is the class name of this object. getProperty doesn't use it: it
 	 * looks up the name it is given.
 	 *  
-	 * @return the property prefix for this Object, or null when it isn't used
+	 * @return the property prefix for this Object ({@code ""} when its settings have no prefix)
 	 * @see #propertyName(String)
-	 * @see #isSupportPrefixProperty()
 	 */
 	public String getPropertyPrefix() {
-		if( !isSupportPrefixProperty()) {
-			return null;
-		}
-		
 		String[] prefixes = propertyPrefixes;
 		if( prefixes == null ) {
 			synchronized (this) {
@@ -222,11 +215,11 @@ public class BaseObject {
 
 	/**
 	 * Set the prefix of this object's settings (see {@link #propertyName(String)}).
-	 * The default is the class name of this object.
+	 * The default (also when this is null) is the class name of this object. An empty prefix
+	 * ({@code ""}) means the settings have no prefix: {@link #propertyName(String)} gives the name alone.
 	 *   
 	 * @param propertyPrefix
 	 * @see #propertyName(String)
-	 * @see #isSupportPrefixProperty()
 	 */
 	public void setPropertyPrefix(String propertyPrefix) {
 		this.propertyPrefixes = propertyPrefix == null ? null : new String[] { propertyPrefix };
@@ -313,7 +306,7 @@ public class BaseObject {
 	/** @return the full name and its value, or null */
 	private String[] findInherited(String name) {
 		String[] prefixes = propertyPrefixes;
-		if( prefixes == null || prefixes.length == 1 || !isSupportPrefixProperty() ) {
+		if( prefixes == null || prefixes.length == 1 ) {
 			String full = propertyName(name);
 			String v = getProperty(full);
 			return v == null ? null : new String[] { full, v };
@@ -375,7 +368,7 @@ public class BaseObject {
 	/**
 	 * The full name of one of this object's settings: its property prefix, a dot and the name
 	 * (<code>parley.mail.pop3</code> and <code>port</code> make <code>parley.mail.pop3.port</code>), or the
-	 * name alone when the prefix isn't used (see {@link #setSupportPrefixProperty(boolean)}).
+	 * name alone when the prefix is empty (see {@link #setPropertyPrefix(String)}).
 	 * {@link #getProperty(String)} looks up the name it is given as it is, so a class whose settings
 	 * share its prefix asks for <code>getProperty(propertyName("port"))</code>.
 	 *
@@ -384,7 +377,7 @@ public class BaseObject {
 	 */
 	public String propertyName(String name) {
 		String prefix = getPropertyPrefix();
-		return prefix == null || prefix.isEmpty() ? name : prefix+"."+name;
+		return prefix.isEmpty() ? name : prefix+"."+name;
 	}
 
 
@@ -580,21 +573,6 @@ public class BaseObject {
 	}
 
 
-	/**
-	 * @return true if {@link #propertyName(String)} puts the property prefix in front of a name (the default)
-	 */
-	public boolean isSupportPrefixProperty() {
-		return supportPrefixProperty;
-	}
-
-	/**
-	 * Whether {@link #propertyName(String)} uses the property prefix (true, the default) or gives the
-	 * name alone.
-	 * @param supportPrefixProperty
-	 */
-	public void setSupportPrefixProperty(boolean supportPrefixProperty) {
-		this.supportPrefixProperty = supportPrefixProperty;
-	}
 
 
 	/**
