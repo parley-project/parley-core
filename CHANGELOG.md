@@ -2,6 +2,16 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-23: settings the servers of a protocol share)
+
+- **`getInheritedProperty(name)`** finds a setting that the servers of a protocol can share (ftp and ftps, say): the
+  first value found for `prefix.name`, trying the prefixes given with **`setPropertyPrefixes(...)`** (most specific
+  first, for example `parley.mail.ftps`, `parley.mail.ftp`, `parley.mail`). Each name is looked up completely before the
+  next, so the more specific prefix wins wherever its value comes from. A class asks for this setting by setting, so a
+  setting that has to differ from one server to the next (a port) is read as before with `propertyName` and never
+  falls back. Nothing else is searched (no class name, no name without a prefix). **`getInheritedPropertyName(name)`**
+  gives the full name the value came from, so a server can log it. An object with one prefix works as it did.
+
 ### Added (2026-11-23: a properties file can include another)
 
 - **`parley.include=name` in a properties file** reads the file it names where the setting stands, so the settings
