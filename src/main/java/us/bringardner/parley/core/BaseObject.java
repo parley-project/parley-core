@@ -223,7 +223,7 @@ public class BaseObject {
 	 * @see #propertyName(String)
 	 * @see #isSupportPrefixProperty()
 	 */
-	protected void setPropertyPrefix(String propertyPrefix) {
+	public void setPropertyPrefix(String propertyPrefix) {
 		this.propertyPrefix = propertyPrefix;
 		this.propertyPrefixes = null;
 	}
@@ -240,12 +240,16 @@ public class BaseObject {
 	 * A setting is shared only when its class asks for it so, so a setting that has to differ from one
 	 * object to the next (a port) never falls back.
 	 *
+	 * A new first prefix is set with {@link #setPropertyPrefix(String)}, so a class that overrides it sees the change.
+	 * The settings are read under the prefix when an object is made, so the prefixes are set by the code that makes
+	 * it, before its settings are read.
+	 *
 	 * @param prefixes the prefixes, at least one, none of them null
 	 * @throws IllegalArgumentException if there are none or one is null
 	 * @see #getInheritedProperty(String)
 	 * @since 2.0.0
 	 */
-	protected void setPropertyPrefixes(String... prefixes) {
+	public void setPropertyPrefixes(String... prefixes) {
 		if( prefixes == null || prefixes.length == 0 ) {
 			throw new IllegalArgumentException("At least one property prefix is needed");
 		}
@@ -254,7 +258,10 @@ public class BaseObject {
 				throw new IllegalArgumentException("A property prefix can't be null");
 			}
 		}
-		this.propertyPrefix = prefixes[0];
+		if( !prefixes[0].equals(propertyPrefix) ) {
+			// a class that does more when its prefix changes (a mail server chooses its shared settings again) does it
+			setPropertyPrefix(prefixes[0]);
+		}
 		this.propertyPrefixes = prefixes.clone();
 	}
 

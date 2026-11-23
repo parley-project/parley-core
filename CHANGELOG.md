@@ -4,6 +4,10 @@
 
 ### Added (2026-11-23: settings the servers of a protocol share)
 
+- **`setPropertyPrefix` and `setPropertyPrefixes` are `public`** (they were `protected`), so the code that makes an
+  object can set where its settings are read from. A class that overrides `setPropertyPrefix` must now make the
+  override `public`.
+
 - **`getInheritedProperty(name)`** finds a setting that the servers of a protocol can share (ftp and ftps, say): the
   first value found for `prefix.name`, trying the prefixes given with **`setPropertyPrefixes(...)`** (most specific
   first, for example `parley.mail.ftps`, `parley.mail.ftp`, `parley.mail`). Each name is looked up completely before the

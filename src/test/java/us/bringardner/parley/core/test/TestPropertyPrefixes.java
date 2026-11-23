@@ -159,4 +159,41 @@ public class TestPropertyPrefixes {
 		s.setSupportPrefixProperty(false);
 		assertEquals("bare", s.getInheritedProperty("shared"));
 	}
+
+	/** a class that does more when its prefix changes */
+	private static class Watching extends PrefixTarget {
+		int changes;
+
+		@Override
+		public void setPropertyPrefix(String propertyPrefix) {
+			changes++;
+			super.setPropertyPrefix(propertyPrefix);
+		}
+	}
+
+	@Test
+	public void theSettersArePublic() {
+		// called from outside the class and its package
+		PrefixTarget t = new PrefixTarget();
+		t.setPropertyPrefix("parley.test.one");
+		assertEquals("parley.test.one", t.getPropertyPrefix());
+		t.setPropertyPrefixes("parley.test.two", "parley.test.one");
+		assertEquals("parley.test.two", t.getPropertyPrefix());
+	}
+
+	@Test
+	public void aNewFirstPrefixIsSetThroughSetPropertyPrefix() {
+		Watching t = new Watching();
+		t.setPropertyPrefixes("parley.test.ftps", "parley.test.ftp");
+		assertEquals(1, t.changes);
+		assertEquals("parley.test.ftps", t.getPropertyPrefix());
+	}
+
+	@Test
+	public void theSameFirstPrefixIsNotSetAgain() {
+		Watching t = new Watching();
+		t.setPropertyPrefix("parley.test.ftps");
+		t.setPropertyPrefixes("parley.test.ftps", "parley.test.ftp");
+		assertEquals(1, t.changes, "only the first call");
+	}
 }
