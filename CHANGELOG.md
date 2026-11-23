@@ -2,6 +2,17 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Added (2026-11-23: a properties file can include another)
+
+- **`parley.include=name` in a properties file** reads the file it names where the setting stands, so the settings
+  after it override the included file and the ones before it are overridden by it. `BaseObject.getProperty` reads
+  it, so every class that reads its settings through BaseObject has it. The name may have `${name}` variables (the
+  settings read so far, then the system properties; `${env.NAME}` is an environment variable). The file is found next
+  to the file that names it on the class path, or by an **`IncludeResolver`** listed as a service
+  (`META-INF/services`), so a module that can open some kind of file (a FileSource, say) gives the include
+  those files without parley-core knowing about them. A file that is not found, a variable without a value and
+  files that include each other are an `IllegalStateException`; the include setting is not one of the settings.
+
 ### Added (2026-11-21: named executors, To-Do 19.7)
 
 - **`NamedExecutors`**: the executors and threads Parley code needs, made with a `NamedThreadFactory`

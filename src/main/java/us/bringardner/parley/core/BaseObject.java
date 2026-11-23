@@ -391,7 +391,7 @@ public class BaseObject {
 		Properties ret = null;
 		try(InputStream in = via.getResourceAsStream(fn)) {
 			if( in != null ) {
-				ret = load(new Properties(), in, fn);
+				ret = load(via, in, fn);
 			}
 		} catch(IOException e) {
 			// We cannot call the normal logging functions here because it could potentially cause a deadlock.
@@ -418,7 +418,7 @@ public class BaseObject {
 
 		for(URL url : urls) {
 			try(InputStream in = url.openStream()) {
-				Properties tmp = load(new Properties(), in, fn);
+				Properties tmp = load(via, in, fn);
 				if( ret == null ) {
 					ret = tmp;
 				} else {
@@ -436,9 +436,9 @@ public class BaseObject {
 		return ret == null ? MISSING : ret;
 	}
 
-	private static Properties load(Properties p, InputStream in, String fn) throws IOException {
-		p.load(in);
-		return p;
+	/** The settings of the file, with the files its <code>parley.include</code> settings name (see {@link #getProperty(String)}) */
+	private static Properties load(Class<?> via, InputStream in, String fn) throws IOException {
+		return PropertiesReader.read(in, fn, PropertiesReader.standard(via));
 	}
 
 	/**
@@ -454,6 +454,14 @@ public class BaseObject {
 	 * itself, for example with {@link #propertyName(String)}.
 	 * <p>
 	 * Properties files are cached, see {@link #setMaxProperties(int)} and {@link #clearPropertyCache()}.
+	 * <p>
+	 * A properties file can include another: a <code>parley.include=name</code> setting reads the file it names
+	 * at that place, so the settings after it override what the file defines and the settings before it are
+	 * overridden by it. The name is found next to the file that names it on the class path (a name that starts
+	 * with a slash from the root of the class path), then by the {@link IncludeResolver}s listed as services.
+	 * It may have <code>${name}</code> variables (the settings read so far, then the system properties;
+	 * <code>${env.NAME}</code> is an environment variable). A file that can't be found, a variable that has no
+	 * value, or files that include each other are an {@link IllegalStateException}.
 	 * <p>
 	 * A class in a named module (module path) can't have its <code>/pkg/Name.properties</code> read unless the
 	 * module opens the package to this module, so the same file may instead be put in
