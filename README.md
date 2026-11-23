@@ -174,7 +174,7 @@ public class Database extends BaseObject {
 }
 ```
 
-`setSupportPrefixProperty(false)` makes `propertyName(name)` give the name alone. `getPropertyClass()`
+`setPropertyPrefix("")` makes `propertyName(name)` give the name alone. `getPropertyClass()`
 (protected) names the class whose files are searched, the object's own class by default.
 
 System properties are read on every call, so they can be changed while the program runs. Properties

@@ -180,7 +180,7 @@ Generating 2,048 bit RSA key pair and self-signed certificate (SHA256withRSA) wi
 		AbstractCoreServer svr = new AbstractCoreServer(0,useSSL) {
 			{
 				//  the key store settings are in TestCore.properties by their names alone
-				setSupportPrefixProperty(false);
+				setPropertyPrefix("");
 			}
 			Socket socket = null;
 			InputStream in = null;

@@ -44,10 +44,9 @@ public class TestBaseObjectCoverage {
 			assertEquals("red", obj.getProperty(obj.propertyName("Color")), "The caller builds the prefixed name");
 			assertEquals("blue", obj.getProperty("Color"), "getProperty looks up the name it is given, as it is");
 
-			obj.setSupportPrefixProperty(false);
-			assertFalse(obj.isSupportPrefixProperty());
-			assertNull(obj.prefix(), "No prefix when prefix support is off");
-			assertEquals("Color", obj.propertyName("Color"), "No prefix in the name when prefix support is off");
+			obj.prefix("");
+			assertEquals("", obj.prefix(), "An empty prefix is no prefix");
+			assertEquals("Color", obj.propertyName("Color"), "No prefix in the name when the prefix is empty");
 			//  property files are still searched (TestCoreBase.properties defines Value02)
 			assertEquals("2", obj.getProperty("Value02"));
 		} finally {
