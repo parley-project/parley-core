@@ -4,6 +4,9 @@
 parley.core.forceTlsVersion
 parley.core.virtualThreads
 
+# A properties file reads another where this stands (PropertiesReader)
+parley.include
+
 # plugins (PluginFolders): the shared folders, and each application's own path
 parley.plugins.path
 parley.plugins.systemRoot
