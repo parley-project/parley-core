@@ -196,4 +196,13 @@ public class TestPropertyPrefixes {
 		t.setPropertyPrefixes("parley.test.ftps", "parley.test.ftp");
 		assertEquals(1, t.changes, "only the first call");
 	}
+
+	@Test
+	public void aNullPrefixGoesBackToTheClassName() {
+		PrefixTarget t = new PrefixTarget();
+		t.setPropertyPrefixes("parley.test.two", "parley.test.one");
+		t.setPropertyPrefix(null);
+		assertEquals(PrefixTarget.class.getName(), t.getPropertyPrefix());
+		assertEquals(null, t.getInheritedPropertyName("nothing.here"));
+	}
 }

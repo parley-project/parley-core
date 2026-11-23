@@ -145,8 +145,11 @@ public class BaseObject {
 	/**
 	 * The prefix of this object's settings, see {@link #propertyName(String)}.
 	 */
-	private volatile String propertyPrefix;
-	/** The prefixes {@link #getInheritedProperty(String)} tries, most specific first, or null when there is only {@link #propertyPrefix} */
+	/**
+	 * The prefixes of this object's settings, most specific first; the first is the prefix
+	 * ({@link #getPropertyPrefix()}). One entry unless {@link #setPropertyPrefixes(String...)} gave more.
+	 * Null until one is set: the prefix is then the class name.
+	 */
 	private volatile String[] propertyPrefixes;
 	/** This object's own settings, or null: read them from the system properties */
 	private volatile Properties configuration;
@@ -204,15 +207,17 @@ public class BaseObject {
 			return null;
 		}
 		
-		if( propertyPrefix == null ) {
+		String[] prefixes = propertyPrefixes;
+		if( prefixes == null ) {
 			synchronized (this) {
-				if( propertyPrefix == null ) {
-					 propertyPrefix = getClass().getName();
+				if( propertyPrefixes == null ) {
+					propertyPrefixes = new String[] { getClass().getName() };
 				}
+				prefixes = propertyPrefixes;
 			}
 		}
 		
-		return propertyPrefix;
+		return prefixes[0];
 	}
 
 	/**
@@ -224,8 +229,7 @@ public class BaseObject {
 	 * @see #isSupportPrefixProperty()
 	 */
 	public void setPropertyPrefix(String propertyPrefix) {
-		this.propertyPrefix = propertyPrefix;
-		this.propertyPrefixes = null;
+		this.propertyPrefixes = propertyPrefix == null ? null : new String[] { propertyPrefix };
 	}
 
 	/**
@@ -258,7 +262,8 @@ public class BaseObject {
 				throw new IllegalArgumentException("A property prefix can't be null");
 			}
 		}
-		if( !prefixes[0].equals(propertyPrefix) ) {
+		String[] current = propertyPrefixes;
+		if( current == null || !prefixes[0].equals(current[0]) ) {
 			// a class that does more when its prefix changes (a mail server chooses its shared settings again) does it
 			setPropertyPrefix(prefixes[0]);
 		}
@@ -308,7 +313,7 @@ public class BaseObject {
 	/** @return the full name and its value, or null */
 	private String[] findInherited(String name) {
 		String[] prefixes = propertyPrefixes;
-		if( prefixes == null || !isSupportPrefixProperty() ) {
+		if( prefixes == null || prefixes.length == 1 || !isSupportPrefixProperty() ) {
 			String full = propertyName(name);
 			String v = getProperty(full);
 			return v == null ? null : new String[] { full, v };
