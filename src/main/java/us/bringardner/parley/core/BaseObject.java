@@ -845,6 +845,10 @@ public class BaseObject {
 					Class<?> loggerClass = getLoggerClass();
 					try {
 						ILogger tmp = (ILogger) loggerClass.getDeclaredConstructor().newInstance();
+						if (tmp instanceof BaseObject) {
+							BaseObject bo = (BaseObject) tmp;
+							bo.setConfiguration(getConfiguration());
+						}
 						tmp.init(name);
 						logger = tmp;
 					} catch (Exception e) {
