@@ -1,7 +1,6 @@
 package us.bringardner.parley.core.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,16 +76,27 @@ public class TestLoggerConfiguration {
 	}
 
 	@Test
-	public void testSettingTheConfigurationLaterMakesTheLoggerAgain() throws Exception {
+	public void testSettingTheConfigurationLaterReachesTheLogger() throws Exception {
 		BaseObject server = new BaseObject();
 		ILogger before = server.getLogger();
 		server.setConfiguration(settings(ParleyLogger.PROPERTY_LOG_LEVEL, "DEBUG"));
 		assertEquals(LogLevel.DEBUG, server.getLogLevel());
-		assertFalse(before == server.getLogger(), "A new logger reads the new configuration");
+		assertSame(before, server.getLogger(), "The logger is started again, not replaced");
 	}
 
 	@Test
-	public void testUseConfigurationOfMakesTheLoggerAgain() throws Exception {
+	public void testALogFileThatIsNoLongerSetIsNoLongerWritten(@TempDir Path dir) throws Exception {
+		File a = dir.resolve("a.log").toFile();
+		BaseObject server = make(settings(ParleyLogger.PROPERTY_LOG_LEVEL, "INFO", ParleyLogger.PROPERTY_LOG_FILE, a.getPath()));
+		server.logInfo("first");
+		server.setConfiguration(settings(ParleyLogger.PROPERTY_LOG_LEVEL, "INFO"));
+		server.logInfo("second");
+		String text = new String(Files.readAllBytes(a.toPath()), StandardCharsets.UTF_8);
+		assertTrue(text.contains("first") && !text.contains("second"), text);
+	}
+
+	@Test
+	public void testUseConfigurationOfReachesTheLogger() throws Exception {
 		BaseObject owner = make(settings(ParleyLogger.PROPERTY_LOG_LEVEL, "DEBUG"));
 		BaseObject helper = new BaseObject();
 		helper.getLogger();

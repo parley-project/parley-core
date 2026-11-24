@@ -250,6 +250,9 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	public void init(String name) {
 		this.name = name;
 		level = parseLevel(findLevel(name), DEFAULT_LEVEL);
+		// init may run again when the configuration changes: a log file that is no longer set is no longer written
+		_out = null;
+		_err = null;
 		String tmp;
 		
 		if( (tmp=getProperty(PROPERTY_LOG_FILE)) != null) {

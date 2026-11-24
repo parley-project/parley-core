@@ -342,15 +342,16 @@ public class BaseObject {
 	 */
 	public void setConfiguration(Properties configuration) {
 		this.configuration = configuration;
-		forgetLogger();
+		reconfigureLogger();
 	}
 
-	/** A logger this object made reads the old configuration: drop it so the next log call makes one with the new one */
-	private void forgetLogger() {
+	/** A logger this object made reads the old configuration: give it the new one and start it again ({@link ILogger#init(String)}) */
+	private void reconfigureLogger() {
 		synchronized (this) {
-			if( loggerMadeHere ) {
-				logger = null;
-				loggerMadeHere = false;
+			ILogger l = logger;
+			if( loggerMadeHere && l instanceof BaseObject ) {
+				((BaseObject) l).useConfigurationOf(this);
+				l.init(loggerName);
 			}
 		}
 	}
@@ -374,7 +375,7 @@ public class BaseObject {
 	public void useConfigurationOf(BaseObject other) {
 		if( other != null ) {
 			this.configuration = other.getConfiguration();
-			forgetLogger();
+			reconfigureLogger();
 		}
 	}
 
@@ -842,8 +843,11 @@ public class BaseObject {
 
 	private volatile ILogger logger;
 
-	/** True when {@link #logger} was made by this object (not given with {@link #setLogger(ILogger)}), so a change of configuration makes it again */
+	/** True when {@link #logger} was made by this object (not given with {@link #setLogger(ILogger)}), so a change of configuration is passed on to it */
 	private volatile boolean loggerMadeHere;
+
+	/** The name {@link #logger} was started with */
+	private volatile String loggerName;
 
 	
 
@@ -865,6 +869,7 @@ public class BaseObject {
 							((BaseObject) tmp).useConfigurationOf(this);
 						}
 						tmp.init(name);
+						loggerName = name;
 						logger = tmp;
 						loggerMadeHere = true;
 					} catch (Exception e) {
