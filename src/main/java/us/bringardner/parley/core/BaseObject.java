@@ -853,10 +853,9 @@ public class BaseObject {
 	 * The objective the this class is to implement logging without creating 
 	 * runtime dependencies to third party libraries. 
 	 * 
-	 * 1)  The System.property "parley.core.logger" is defined, that class is used
-	 *     (JulLogger, SystemLogger or any other ILogger).
-	 * 2)  If the log4j2 API (org.apache.logging.log4j) is in the class path, Log4JLogger is used.
-	 * 3)  The default is ParleyLogger.
+	 * 1)  The System.property "parley.logger" ({@value #PROPERTY_LOGGER}) is defined, that class is used
+	 *     (JulLogger, SystemLogger, Log4JLogger or any other ILogger).
+	 * 2)  The default is ParleyLogger.
 	 * 
 	 * @return the Class used to create ILoggers
 	 */
