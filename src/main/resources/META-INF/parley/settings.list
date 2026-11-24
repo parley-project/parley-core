@@ -2,6 +2,7 @@
 # (format: parley-net's KnownSettings). Add a name here when code here starts reading it.
 
 parley.core.forceTlsVersion
+parley.core.logger
 parley.core.virtualThreads
 
 # A properties file reads another where this stands (PropertiesReader)

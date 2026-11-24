@@ -17,6 +17,7 @@ import javax.net.ServerSocketFactory;
 
 import org.junit.jupiter.api.Test;
 
+import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
 import us.bringardner.parley.core.util.SocketClient;
@@ -179,7 +180,7 @@ public class TestUtilCoverage {
 			assertEquals("127.0.0.1", new Server().getBindAddr().getHostAddress());
 			System.setProperty(key, "[not-a-valid-address");
 			Server svr = new Server();
-			svr.setLogLevel(us.bringardner.parley.core.LogLevel.NONE);
+			svr.setLogLevel(ILogger.Level.NONE);
 			assertThrows(IllegalStateException.class, svr::getBindAddr);
 		} finally {
 			System.clearProperty(key);

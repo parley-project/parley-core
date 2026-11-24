@@ -8,8 +8,8 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -321,6 +321,11 @@ public class BaseObject {
 		return null;
 	}
 
+	
+	public void setLogLevel(ILogger.Level level) {
+		getLogger().setLevel(level);
+	}
+	
 	/**
 	 * Give this object settings of its own. {@link #getProperty(String, String)} then looks a name
 	 * up in them, and in the properties files of its class chain for defaults, and never in the
@@ -333,7 +338,6 @@ public class BaseObject {
 	 */
 	public void setConfiguration(Properties configuration) {
 		this.configuration = configuration;
-		this.levelSetting = null;
 	}
 
 	/**
@@ -354,8 +358,7 @@ public class BaseObject {
 	 */
 	public void useConfigurationOf(BaseObject other) {
 		if( other != null ) {
-			this.configuration = other.getConfiguration();
-			this.levelSetting = null;
+			this.configuration = other.getConfiguration();			
 		}
 	}
 
@@ -647,6 +650,8 @@ public class BaseObject {
 			return new LookupPlan(type);
 		}
 	};
+	
+	
 
 	/**
 	 * The class whose properties files are searched by {@link #getProperty(String, String)}
@@ -811,59 +816,79 @@ public class BaseObject {
 	private static final String PARLEY_PACKAGE = "us.bringardner.parley.";
 	private static final String BRINGARDNER_PACKAGE = "us.bringardner.";
 
-	/** The System.Loggers, by name, shared by every object that logs under the name. */
-	private static final ConcurrentHashMap<String, System.Logger> systemLoggers = new ConcurrentHashMap<>();
+	public static final String PROPERTY_LOGGER = "parley.logger";
+	
 
-	/** Changed by {@link #refreshLogLevels()}: the {@value #PROPERTY_LOG_LEVEL} settings are read again. */
-	private static volatile int levelGeneration;
+	private static Class<?> loggerClass;
 
-	/** The level found in the settings, and the {@link #levelGeneration} it was found in. */
-	private static final class LevelSetting {
-		final LogLevel level;
-		final int generation;
+	private volatile ILogger logger;
 
-		LevelSetting(LogLevel level, int generation) {
-			this.level = level;
-			this.generation = generation;
+	
+
+	/**
+	 * Find the ILogger for his name.  
+	 * 
+	 * @param name
+	 * @return the ILogger associated with the given name.
+	 */
+	protected ILogger getLogger(String name) {
+		if( logger == null ) {
+			synchronized (this) {
+				if( logger == null ) {
+					Class<?> loggerClass = getLoggerClass();
+					try {
+						ILogger tmp = (ILogger) loggerClass.getDeclaredConstructor().newInstance();
+						tmp.init(name);
+						logger = tmp;
+					} catch (Exception e) {
+						throw new IllegalStateException("Fatal error occured attempting to create ILogger. loggerClass="+loggerClass,e);
+					}
+				}
+			}
 		}
-	}
-
-	/** Set with setLogLevel; null when it isn't set */
-	private volatile LogLevel logLevel;
-	/** What the parley.log.level settings say (its level may be null: nothing is set); null until it's looked up */
-	private volatile LevelSetting levelSetting;
-	private volatile System.Logger systemLogger;
-
-	/**
-	 * Set this object's level. It wins over the {@value #PROPERTY_LOG_LEVEL} settings, and is this
-	 * object's alone: other objects of the same class keep theirs.
-	 *
-	 * @param level the level, NONE to log nothing, or null to go back to the settings
-	 * @since 2.0.0
-	 */
-	public void setLogLevel(LogLevel level) {
-		this.logLevel = level;
+		return logger;
 	}
 
 	/**
-	 * @return the level set with {@link #setLogLevel(LogLevel)}, or null when none is (the
-	 *         {@value #PROPERTY_LOG_LEVEL} settings then decide, and when they don't either, the installed
-	 *         System.Logger does)
-	 * @since 2.0.0
+	 * Determine the class to use to implement the ILogger api.
+	 * The objective the this class is to implement logging without creating 
+	 * runtime dependencies to third party libraries. 
+	 * 
+	 * 1)  The System.property "parley.core.logger" is defined, that class is used
+	 *     (JulLogger, SystemLogger or any other ILogger).
+	 * 2)  If the log4j2 API (org.apache.logging.log4j) is in the class path, Log4JLogger is used.
+	 * 3)  The default is ParleyLogger.
+	 * 
+	 * @return the Class used to create ILoggers
 	 */
-	public LogLevel getLogLevel() {
-		return logLevel;
+	protected static Class<?> getLoggerClass() {
+		if( loggerClass == null ) {
+			synchronized (BaseObject.class) {
+				if( loggerClass == null ) {
+					String  tmp = System.getProperty(PROPERTY_LOGGER);
+					if( tmp != null ) {
+						try {
+							Class<?> cls = Class.forName(tmp);
+							if( ILogger.class.isAssignableFrom(cls)) {
+								loggerClass = cls;
+							} else {
+								System.err.println("Defined Logger does not implement "+ILogger.class.getName()+". "+PROPERTY_LOGGER+"="+tmp);
+							}
+						} catch (ClassNotFoundException e) {
+							System.err.println("Defined Logger is not availible. "+PROPERTY_LOGGER+"="+tmp);
+						}
+					}
+					if( loggerClass == null ) 	{						
+						loggerClass =  ParleyLogger.class;
+					}
+				}
+			}
+		}
+
+		return loggerClass;
 	}
 
-	/**
-	 * Read the {@value #PROPERTY_LOG_LEVEL} settings again: every object looks up its level again the
-	 * next time it logs. An object reads them once, when it first logs, so call this after changing them.
-	 * @since 2.0.0
-	 */
-	public static void refreshLogLevels() {
-		levelGeneration++;
-	}
-
+	
 	/**
 	 * The name this object logs under: the name of its System.Logger, and the name its
 	 * {@value #PROPERTY_LOG_LEVEL} settings are looked up by. The default is the class name.
@@ -899,80 +924,8 @@ public class BaseObject {
 		return n;
 	}
 
-	/**
-	 * @return the level that decides what this object logs: the one set with
-	 *         {@link #setLogLevel(LogLevel)}, else the nearest {@value #PROPERTY_LOG_LEVEL} setting, else
-	 *         null (everything goes to the System.Logger, which decides)
-	 */
-	private LogLevel effectiveLevel() {
-		LogLevel ret = logLevel;
-		if( ret != null ) {
-			return ret;
-		}
-		LevelSetting s = levelSetting;
-		int generation = levelGeneration;
-		if( s == null || s.generation != generation ) {
-			s = new LevelSetting(findLevel(), generation);
-			levelSetting = s;
-		}
-		return s.level;
-	}
+	
 
-	/** The nearest level set: parley.log.level.NAME, then each shorter name, then parley.log.level; null for none. */
-	private LogLevel findLevel() {
-		String n = levelName(getLoggerName());
-		String v = null;
-		while( v == null && !n.isEmpty() ) {
-			v = setting(PROPERTY_LOG_LEVEL + "." + n);
-			int dot = n.lastIndexOf('.');
-			n = dot < 0 ? "" : n.substring(0, dot);
-		}
-		if( v == null ) {
-			v = setting(PROPERTY_LOG_LEVEL);
-		}
-		return v == null ? null : LogLevel.parse(v, null);
-	}
-
-	private String setting(String name) {
-		String v = getProperty(name);
-		return v == null || v.trim().isEmpty() ? null : v;
-	}
-
-	/**
-	 * @return the System.Logger this object writes to (shared by every object with the same
-	 *         {@link #getLoggerName() name})
-	 * @since 2.0.0
-	 */
-	protected System.Logger getSystemLogger() {
-		System.Logger ret = systemLogger;
-		if( ret == null ) {
-			String name = getLoggerName();
-			if( name == null ) {
-				name = "";
-			}
-			ret = systemLoggers.get(name);
-			if( ret == null ) {
-				//  Not computeIfAbsent: the installed LoggerFinder may be loaded now, and it may log
-				ret = System.getLogger(name);
-				System.Logger prev = systemLoggers.putIfAbsent(name, ret);
-				if( prev != null ) {
-					ret = prev;
-				}
-			}
-			systemLogger = ret;
-		}
-		return ret;
-	}
-
-	/** Whether this object's level lets a message at this level through (the System.Logger is not asked). */
-	private boolean levelAllows(LogLevel level) {
-		LogLevel l = effectiveLevel();
-		return l == null || l.allows(level);
-	}
-
-	private boolean isEnabled(LogLevel level) {
-		return levelAllows(level) && getSystemLogger().isLoggable(level.toSystemLevel());
-	}
 
 	/**
 	 * The ID of the work this object does, put in front of its messages when the thread that logs
@@ -985,52 +938,25 @@ public class BaseObject {
 	protected String getLogContext() {
 		return null;
 	}
-
-	/** The ID to put in front of a message: the thread's ({@link LogContext}), else this object's; null for none. */
-	private String logContextNow() {
-		String id = LogContext.get();
-		if( id == null ) {
-			id = getLogContext();
-			if( id != null && id.isEmpty() ) {
-				id = null;
-			}
-		}
-		return id;
+	
+	public ILogger getLogger() {
+		if( logger == null ) {
+			synchronized (this) {
+				if( logger == null ) {
+					logger = getLogger(getClass().getName());		
+				}
+			}			
+		}		
+		return logger;
 	}
 
-	private static String withContext(String id, String msg) {
-		return id == null ? msg : "["+id+"] "+msg;
-	}
-
-	private void log(LogLevel level, String msg) {
-		if( levelAllows(level) ) {
-			getSystemLogger().log(level.toSystemLevel(), withContext(logContextNow(), msg));
-		}
-	}
-
-	private void log(LogLevel level, String msg, Throwable error) {
-		if( levelAllows(level) ) {
-			getSystemLogger().log(level.toSystemLevel(), withContext(logContextNow(), msg), error);
-		}
-	}
-
-	private void log(LogLevel level, Supplier<String> msg) {
-		if( levelAllows(level) ) {
-			//  The ID is read now, on the thread that logs; the message is still built only if it is written
-			String id = logContextNow();
-			if( id == null || msg == null ) {
-				getSystemLogger().log(level.toSystemLevel(), msg);
-			} else {
-				getSystemLogger().log(level.toSystemLevel(), () -> withContext(id, msg.get()));
-			}
-		}
-	}
-
+	
+	 		
 	/**
 	 * @param msg The message to log if Debug logging is enabled
 	 */
 	public void logDebug(String msg) {
-		log(LogLevel.DEBUG, msg);
+		getLogger().debug(msg);
 	}
 
 	/**
@@ -1040,7 +966,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Debug logging is enabled
 	 */
 	public void logDebug(Supplier<String> msg) {
-		log(LogLevel.DEBUG, msg);
+		getLogger().debug(msg);
 	}
 
 	/**
@@ -1048,14 +974,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Debug is enabled 
 	 */
 	public void logDebug(String msg, Throwable error) {
-		log(LogLevel.DEBUG, msg, error);
+		getLogger().debug(msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Error logging is enabled
 	 */
 	public void logError(String msg) {
-		log(LogLevel.ERROR, msg);
+		getLogger().error(msg);
 	}
 
 	/**
@@ -1064,7 +990,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Error logging is enabled
 	 */
 	public void logError(Supplier<String> msg) {
-		log(LogLevel.ERROR, msg);
+		getLogger().error(msg);
 	}
 
 	/**
@@ -1072,14 +998,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Error is enabled 
 	 */
 	public void logError(String msg, Throwable error) {
-		log(LogLevel.ERROR, msg, error);
+		getLogger().error(msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Warn logging is enabled
 	 */
 	public void logWarn(String msg) {
-		log(LogLevel.WARN, msg);
+		getLogger().warn(msg);
 	}
 
 	/**
@@ -1088,7 +1014,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Warn logging is enabled
 	 */
 	public void logWarn(Supplier<String> msg) {
-		log(LogLevel.WARN, msg);
+		getLogger().warn(msg);
 	}
 
 	/**
@@ -1096,14 +1022,14 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Warn is enabled 
 	 */
 	public void logWarn(String msg, Throwable error) {
-		log(LogLevel.WARN, msg, error);
+		getLogger().warn(msg, error);
 	}
 
 	/**
 	 * @param msg The message to log if Info logging is enabled
 	 */
 	public void logInfo(String msg) {
-		log(LogLevel.INFO, msg);
+		getLogger().info(msg);
 	}
 
 	/**
@@ -1112,7 +1038,7 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Info logging is enabled
 	 */
 	public void logInfo(Supplier<String> msg) {
-		log(LogLevel.INFO, msg);
+		getLogger().info(msg);
 	}
 
 	/**
@@ -1120,34 +1046,38 @@ public class BaseObject {
 	 * @param error log the stack trace of the error if Info is enabled 
 	 */
 	public void logInfo(String msg, Throwable error) {
-		log(LogLevel.INFO, msg, error);
+		getLogger().info(msg, error);
 	}
 
 	/**
 	 * @return true if Debug logging is enabled: this object's level lets it through, and so does its System.Logger
 	 */
 	public boolean isDebugEnabled() {
-		return isEnabled(LogLevel.DEBUG);
+		return getLogger().isDebugEnabled();
 	}
 
 	/**
 	 * @return true if Error logging is enabled
 	 */
 	public boolean isErrorEnabled() {
-		return isEnabled(LogLevel.ERROR);
+		return getLogger().isErrorEnabled();
 	}
 
 	/**
 	 * @return true if Warn logging is enabled
 	 */
 	public boolean isWarnEnabled() {
-		return isEnabled(LogLevel.WARN);
+		return getLogger().isWarnEnabled();
 	}
 
 	/**
 	 * @return true if Info logging is enabled
 	 */
 	public boolean isInfoEnabled() {
-		return isEnabled(LogLevel.INFO);
+		return getLogger().isInfoEnabled();
+	}
+
+	public void setLogger(Log4JLogger logger2) {
+		logger = logger2;		
 	}
 }
