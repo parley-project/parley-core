@@ -25,16 +25,12 @@ import java.util.function.Supplier;
  * It provides for the simplest and most fundamental functions required by most non trivial classes 
  * such as logging and property management.
  *
- * Logging: Parley code logs with logDebug, logInfo, logWarn and logError. Each object has a level
- * (setLogLevel, else the parley.log.level settings); what it lets through is written with the JDK's
- * System.Logger, so the application decides what writes the messages (java.util.logging by default,
- * or whatever System.LoggerFinder it installs, such as parley-logging's). When no level is set,
- * everything goes to the System.Logger, which decides. A message starts with the ID of the work
- * it belongs to ([pop3-4127]) when the thread has one, see LogContext.
- * System.Logger can't name the code that logged, so a logging system that shows the source class and
- * method shows BaseObject; the logger name (getLoggerName, the object's class) is the one to show. The
- * README's Logging section has a java.util.logging format that does.
- *  
+ * Logging: Parley code logs with logDebug, logInfo, logWarn and logError, which write to the object's
+ * {@link ILogger} (getLogger). The ILogger is created from the class named by the system property
+ * {@value #PROPERTY_LOGGER} (JulLogger, SystemLogger, Log4JLogger, or any other ILogger), and is
+ * ParleyLogger when it isn't set. setLogLevel sets the object's level. A message starts with the ID of
+ * the work it belongs to ([pop3-4127]) when the thread has one, see LogContext.
+ *
  *
  * Copyright 1998-2026 <A href="http://bringardner.us/tony">Tony Bringardner</A>
  * 
