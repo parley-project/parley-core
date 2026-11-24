@@ -933,16 +933,31 @@ public class BaseObject {
 	
 
 
+	/** Set with {@link #setLogContext(String)}; null for none */
+	private volatile String logContext;
+
+	/**
+	 * Sets the ID of the work this object does (a server's session, say). It goes in front of this
+	 * object's messages when the thread that logs has no ID of its own ({@link LogContext}).
+	 *
+	 * @param logContext the ID, or null for none
+	 * @since 2.0.0
+	 */
+	public void setLogContext(String logContext) {
+		this.logContext = logContext;
+	}
+
 	/**
 	 * The ID of the work this object does, put in front of its messages when the thread that logs
 	 * has none ({@link LogContext}): a connection that logs outside its handler's calls names
-	 * itself here. The default is none.
+	 * itself here. The default is the ID set with {@link #setLogContext(String)}, or none. A subclass
+	 * can override it to work the ID out.
 	 *
 	 * @return the ID, or null
 	 * @since 2.0.0
 	 */
 	protected String getLogContext() {
-		return null;
+		return logContext;
 	}
 
 	/** The ID to put in front of a message: the thread's ({@link LogContext}), else this object's; null for none. */

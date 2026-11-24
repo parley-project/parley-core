@@ -32,6 +32,10 @@ public class TestLogContext {
 		List<String> messages() {
 			return recorder.messages;
 		}
+
+		String getLogContextForTest() {
+			return getLogContext();
+		}
 	}
 
 	static class Plain extends Logs {}
@@ -41,6 +45,7 @@ public class TestLogContext {
 	static class Wrapped extends Logs {}
 	static class Called extends Logs {}
 	static class InThread extends Logs {}
+	static class Set extends Logs {}
 
 	/** An object with an ID of its own, as a connection has. */
 	static class Own extends Logs {
@@ -131,6 +136,17 @@ public class TestLogContext {
 			obj.logInfo("for a session");
 		}
 		assertEquals(Arrays.asList("INFO [own-7] alone", "INFO [own-7] alone too", "INFO [smtp-3] for a session"), obj.messages());
+	}
+
+	@Test
+	public void testAnObjectIsGivenAnIdWithSetLogContext() {
+		Set obj = new Set();
+		assertNull(obj.getLogContextForTest());
+		obj.setLogContext("smtp-5");
+		obj.logInfo("one");
+		obj.setLogContext(null);
+		obj.logInfo("two");
+		assertEquals(Arrays.asList("INFO [smtp-5] one", "INFO two"), obj.messages());
 	}
 
 	@Test
