@@ -342,6 +342,17 @@ public class BaseObject {
 	 */
 	public void setConfiguration(Properties configuration) {
 		this.configuration = configuration;
+		forgetLogger();
+	}
+
+	/** A logger this object made reads the old configuration: drop it so the next log call makes one with the new one */
+	private void forgetLogger() {
+		synchronized (this) {
+			if( loggerMadeHere ) {
+				logger = null;
+				loggerMadeHere = false;
+			}
+		}
 	}
 
 	/**
@@ -362,7 +373,8 @@ public class BaseObject {
 	 */
 	public void useConfigurationOf(BaseObject other) {
 		if( other != null ) {
-			this.configuration = other.getConfiguration();			
+			this.configuration = other.getConfiguration();
+			forgetLogger();
 		}
 	}
 
@@ -830,6 +842,9 @@ public class BaseObject {
 
 	private volatile ILogger logger;
 
+	/** True when {@link #logger} was made by this object (not given with {@link #setLogger(ILogger)}), so a change of configuration makes it again */
+	private volatile boolean loggerMadeHere;
+
 	
 
 	/**
@@ -846,11 +861,12 @@ public class BaseObject {
 					try {
 						ILogger tmp = (ILogger) loggerClass.getDeclaredConstructor().newInstance();
 						if (tmp instanceof BaseObject) {
-							BaseObject bo = (BaseObject) tmp;
-							bo.setConfiguration(getConfiguration());
+							// the logger reads its settings where its owner does, not from the system properties
+							((BaseObject) tmp).useConfigurationOf(this);
 						}
 						tmp.init(name);
 						logger = tmp;
+						loggerMadeHere = true;
 					} catch (Exception e) {
 						throw new IllegalStateException("Fatal error occured attempting to create ILogger. loggerClass="+loggerClass,e);
 					}
@@ -1212,6 +1228,9 @@ public class BaseObject {
 	}
 
 	public void setLogger(ILogger logger) {
-		this.logger = logger;
+		synchronized (this) {
+			this.logger = logger;
+			loggerMadeHere = false;
+		}
 	}
 }
