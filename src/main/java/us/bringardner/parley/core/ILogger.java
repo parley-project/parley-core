@@ -55,25 +55,6 @@ import java.util.function.Supplier;
  *    
  */
 public interface ILogger {
-	/*
-	int l0Off = org.apache.logging.log4j.Level.OFF.intLevel();
-		int l100Fatal = org.apache.logging.log4j.Level.FATAL.intLevel();
-		int l200Error = org.apache.logging.log4j.Level.ERROR.intLevel();
-		int l300Warn = org.apache.logging.log4j.Level.WARN.intLevel();
-		int l400Info = org.apache.logging.log4j.Level.INFO.intLevel();
-		int l500Debug = org.apache.logging.log4j.Level.DEBUG.intLevel();
-		int l600Trace = org.apache.logging.log4j.Level.TRACE.intLevel();
-		
-		int l2147483647All = org.apache.logging.log4j.Level.ALL.intLevel(); 
-	 */
-	enum Level  {
-		NONE,
-		ERROR,
-		WARN,
-		INFO,
-		DEBUG
-		};
-	
 	/**
 	 * Initialize the ILogger 
 	 * @param name
@@ -84,12 +65,12 @@ public interface ILogger {
 	 * Set the Level associated with the ILogger.
 	 * @param level
 	 */
-	public void setLevel(Level level);
+	public void setLevel(LogLevel level);
 	
 	/**
 	 * @return the Level currently associated with the ILogger.
 	 */
-	public Level getLevel();
+	public LogLevel getLevel();
 	
 	/**
 	 * generate a log entry if isInof() returns true.
@@ -106,7 +87,7 @@ public interface ILogger {
 	public void info(String msg, Throwable error);
 	
 	/**
-	 * @return true if getLevel() returns a value &gt;= Level.Info
+	 * @return true if getLevel() returns a value &gt;= LogLevel.INFO
 	 */
 
 	public boolean isInfoEnabled();
@@ -127,7 +108,7 @@ public interface ILogger {
 	public void error(String msg, Throwable error);
 	
 	/**
-	 * @return true if getLevel() returns a value &gt;= Level.Error
+	 * @return true if getLevel() returns a value &gt;= LogLevel.ERROR
 	 */
 	public boolean isErrorEnabled();
 	
@@ -146,7 +127,7 @@ public interface ILogger {
 	public void debug(String msg, Throwable error);
 	
 	/**
-	 * @return true if getLevel() returns a value &gt;= Level.Debug
+	 * @return true if getLevel() returns a value &gt;= LogLevel.DEBUG
 	 */
 
 	public boolean isDebugEnabled();
@@ -168,7 +149,7 @@ public interface ILogger {
 	public void warn(String msg, Throwable error);
 	
 	/**
-	 * @return true if getLevel() returns a value &gt;= Level.Warn
+	 * @return true if getLevel() returns a value &gt;= LogLevel.WARN
 	 */
 
 	public boolean isWarnEnabled();

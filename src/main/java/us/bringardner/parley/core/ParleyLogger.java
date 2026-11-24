@@ -82,7 +82,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 * The default level is ERROR so that errors are never silently discarded.
 	 * Set {@value #PROPERTY_LOG_LEVEL} (NONE, ERROR, WARN, INFO, DEBUG) to change it.
 	 */
-	public static final Level DEFAULT_LEVEL = Level.ERROR;
+	public static final LogLevel DEFAULT_LEVEL = LogLevel.ERROR;
 	
 
 	//  DateTimeFormatter is immutable and thread safe, so no locking is required.
@@ -164,7 +164,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 		}
 	}
 
-	private volatile ILogger.Level level = DEFAULT_LEVEL;
+	private volatile LogLevel level = DEFAULT_LEVEL;
 	private String name;
 	private volatile PrintStream _out;
 	private volatile PrintStream _err;
@@ -173,7 +173,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	public void debug(String msg) {
 		
 		if( isDebugEnabled() ) {
-			logMessage(Level.DEBUG,msg,getOut());
+			logMessage(LogLevel.DEBUG,msg,getOut());
 		}
 	}
 
@@ -202,34 +202,34 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	public void debug(String msg, Throwable error) {
 		
 		if( isDebugEnabled() ) {
-			logMessage(Level.DEBUG,msg,error,getErr());
+			logMessage(LogLevel.DEBUG,msg,error,getErr());
 		}
 	}
 
 	public void error(String msg) {
 		if( isErrorEnabled() ) {
-			logMessage(Level.ERROR,msg,getErr());
+			logMessage(LogLevel.ERROR,msg,getErr());
 		}
 
 	}
 
 	public void error(String msg, Throwable error) {
 		if( isErrorEnabled() ) {
-			logMessage(Level.ERROR,msg,error,getErr());
+			logMessage(LogLevel.ERROR,msg,error,getErr());
 		}
 
 	}
 
 	public void info(String msg) {
 		if( isInfoEnabled() ) {
-			logMessage(Level.INFO,msg,getOut());
+			logMessage(LogLevel.INFO,msg,getOut());
 		}
 
 	}
 
 	public void info(String msg, Throwable error) {
 		if( isInfoEnabled() ) {
-			logMessage(Level.INFO,msg,error,getErr());
+			logMessage(LogLevel.INFO,msg,error,getErr());
 		}
 
 	}
@@ -320,25 +320,25 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	 * @param defaultLevel returned if value is null or invalid
 	 * @return the Level
 	 */
-	public static Level parseLevel(String value, Level defaultLevel) {
+	public static LogLevel parseLevel(String value, LogLevel defaultLevel) {
 		if( value == null || value.trim().isEmpty()) {
 			return defaultLevel;
 		}
 		String tmp = value.trim().toUpperCase(Locale.ROOT);
 		switch (tmp) {
 			// common aliases used by other logging frameworks
-			case "OFF": return Level.NONE;
+			case "OFF": return LogLevel.NONE;
 			case "SEVERE": 
-			case "FATAL": return Level.ERROR;
-			case "WARNING": return Level.WARN;
+			case "FATAL": return LogLevel.ERROR;
+			case "WARNING": return LogLevel.WARN;
 			case "TRACE": 
 			case "ALL": 
 			case "FINE": 
 			case "FINER": 
-			case "FINEST": return Level.DEBUG;
+			case "FINEST": return LogLevel.DEBUG;
 			default:
 				try {
-					return Level.valueOf(tmp);
+					return LogLevel.valueOf(tmp);
 				} catch (IllegalArgumentException e) {
 					System.err.println("Invalid "+PROPERTY_LOG_LEVEL+" ("+value+"). Using "+defaultLevel);
 					return defaultLevel;
@@ -599,11 +599,11 @@ public class ParleyLogger extends BaseObject implements ILogger {
 		}
 	}
 
-	protected void logMessage(Level level,String msg,PrintStream out) {
+	protected void logMessage(LogLevel level,String msg,PrintStream out) {
 		out.println(formatMessage(level, msg));
 	}
 
-	private void logMessage(Level level,String msg,Throwable error, PrintStream out) {
+	private void logMessage(LogLevel level,String msg,Throwable error, PrintStream out) {
 		String line = formatMessage(level, msg);
 		if( error == null ) {
 			out.println(line);
@@ -622,7 +622,7 @@ public class ParleyLogger extends BaseObject implements ILogger {
 		}
 	}
 
-	private String formatMessage(Level level,String msg) {
+	private String formatMessage(LogLevel level,String msg) {
 		String thread = Thread.currentThread().getName();
 		String lvl = level.toString();
 		StringBuilder ret = new StringBuilder(40 + thread.length() + lvl.length() + (name == null ? 4 : name.length()) + (msg == null ? 4 : msg.length()));
@@ -631,35 +631,35 @@ public class ParleyLogger extends BaseObject implements ILogger {
 	}
 
 	public boolean isDebugEnabled() {		
-		return isEnabled(ILogger.Level.DEBUG);
+		return isEnabled(LogLevel.DEBUG);
 	}
 
 	public boolean isErrorEnabled() {
-		return isEnabled(ILogger.Level.ERROR);
+		return isEnabled(LogLevel.ERROR);
 	}
 
 	public boolean isInfoEnabled() {		
-		return isEnabled(ILogger.Level.INFO);
+		return isEnabled(LogLevel.INFO);
 	}
 	
 	public boolean isWarnEnabled() {	
-		return isEnabled(ILogger.Level.WARN);
+		return isEnabled(LogLevel.WARN);
 	}
 
-	private boolean isEnabled(ILogger.Level target) {
-		Level current = level;
-		return current != ILogger.Level.NONE && current.ordinal() >= target.ordinal();
+	private boolean isEnabled(LogLevel target) {
+		LogLevel current = level;
+		return current != LogLevel.NONE && current.ordinal() >= target.ordinal();
 	}
 
-	public void setLevel(Level level) {
+	public void setLevel(LogLevel level) {
 		if( level == null ) {
-			this.level = Level.NONE;
+			this.level = LogLevel.NONE;
 		} else {
 			this.level = level;
 		}
 	}
 
-	public Level getLevel() {
+	public LogLevel getLevel() {
 		return level;
 	}
 
@@ -667,14 +667,14 @@ public class ParleyLogger extends BaseObject implements ILogger {
 
 	public void warn(String msg) {
 		if( isWarnEnabled() ) {
-			logMessage(Level.WARN,msg,getOut());
+			logMessage(LogLevel.WARN,msg,getOut());
 		}		
 	}
 
 	public void warn(String msg, Throwable error) {
 
 		if( isWarnEnabled() ) {
-			logMessage(Level.WARN,msg,error,getErr());
+			logMessage(LogLevel.WARN,msg,error,getErr());
 		}		
 	}
 

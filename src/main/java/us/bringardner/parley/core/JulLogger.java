@@ -159,7 +159,7 @@ public class JulLogger implements ILogger {
 	 *	DEBUG -&gt; FINEST (debug messages are logged at FINE, so FINEST shows them and any FINER and FINEST
 	 *	         messages logged directly with java.util.logging)
 	 */
-	public void setLevel(Level level) {
+	public void setLevel(LogLevel level) {
 		java.util.logging.Level ret = java.util.logging.Level.OFF;
 		
 		if( level != null ) {
@@ -229,8 +229,8 @@ public class JulLogger implements ILogger {
 		logger = java.util.logging.Logger.getLogger(name);	
 	}
 
-	public Level getLevel() {
-		Level ret = Level.NONE;
+	public LogLevel getLevel() {
+		LogLevel ret = LogLevel.NONE;
 		
 		//  The level is null when it's inherited from a parent logger
 		java.util.logging.Level l  = null;
@@ -244,17 +244,17 @@ public class JulLogger implements ILogger {
 		
 		int val = l.intValue();
 		if( val == java.util.logging.Level.OFF.intValue()) {
-			ret = Level.NONE;
+			ret = LogLevel.NONE;
 		} else if( val >= java.util.logging.Level.SEVERE.intValue()) {
-			ret = Level.ERROR;
+			ret = LogLevel.ERROR;
 		} else if( val >= java.util.logging.Level.WARNING.intValue()) {
-			ret = Level.WARN;
+			ret = LogLevel.WARN;
 		} else if( val > DEBUG_LEVEL.intValue()) {
 			//  INFO and CONFIG (debug messages, at FINE, are not logged)
-			ret = Level.INFO;
+			ret = LogLevel.INFO;
 		} else {
 			//  FINE, FINER, FINEST and ALL
-			ret = Level.DEBUG;
+			ret = LogLevel.DEBUG;
 		}
 		
 		return ret;

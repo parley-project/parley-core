@@ -304,11 +304,24 @@ public abstract class BaseThread extends SecureBaseObject implements Runnable {
 	 * method that threw left running true, and start() refused to start the thread again.
 	 */
 	private void runThread() {
-		try {
+		//  Everything logged on this thread starts with the ID, whichever object logs it. Without an
+		//  ID of its own the thread's is left as it is (a null scope, which try-with-resources accepts).
+		String id = getLogContext();
+		try (LogContext.Scope scope = id == null ? null : LogContext.enter(id)) {
 			run();
 		} finally {
 			running = false;
 		}
+	}
+
+	/**
+	 * @return the ID of the work this thread does, set with {@link #setLogContext(String)} before
+	 *         {@link #start()}: everything logged on the thread starts with it ({@link LogContext}). Null for none.
+	 * @since 2.0.0
+	 */
+	@Override
+	public String getLogContext() {
+		return super.getLogContext();
 	}
 
 	/**

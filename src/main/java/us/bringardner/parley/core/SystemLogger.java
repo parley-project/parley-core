@@ -46,7 +46,7 @@ public class SystemLogger implements ILogger {
 	private volatile System.Logger logger;
 
 	//  This logger's own level, or null to leave it all to the logging system
-	private volatile Level level;
+	private volatile LogLevel level;
 
 	/**
 	 * @return the System.Logger messages go to
@@ -71,7 +71,7 @@ public class SystemLogger implements ILogger {
 	 *
 	 * @param level the level, or null to leave it all to the logging system again
 	 */
-	public void setLevel(Level level) {
+	public void setLevel(LogLevel level) {
 		this.level = level;
 	}
 
@@ -79,27 +79,27 @@ public class SystemLogger implements ILogger {
 	 * @return the level set with setLevel, or, when none is, the most detailed level the logging
 	 *         system logs for this name (NONE when it logs nothing)
 	 */
-	public Level getLevel() {
-		Level ret = level;
+	public LogLevel getLevel() {
+		LogLevel ret = level;
 		if( ret == null ) {
 			System.Logger tmp = getLogger();
 			if( tmp.isLoggable(System.Logger.Level.DEBUG) ) {
-				ret = Level.DEBUG;
+				ret = LogLevel.DEBUG;
 			} else if( tmp.isLoggable(System.Logger.Level.INFO) ) {
-				ret = Level.INFO;
+				ret = LogLevel.INFO;
 			} else if( tmp.isLoggable(System.Logger.Level.WARNING) ) {
-				ret = Level.WARN;
+				ret = LogLevel.WARN;
 			} else if( tmp.isLoggable(System.Logger.Level.ERROR) ) {
-				ret = Level.ERROR;
+				ret = LogLevel.ERROR;
 			} else {
-				ret = Level.NONE;
+				ret = LogLevel.NONE;
 			}
 		}
 		return ret;
 	}
 
 	//  The System.Logger level for each ILogger level (NONE is never logged)
-	private static System.Logger.Level toSystem(Level level) {
+	private static System.Logger.Level toSystem(LogLevel level) {
 		switch (level) {
 		case ERROR: return System.Logger.Level.ERROR;
 		case WARN:  return System.Logger.Level.WARNING;
@@ -109,8 +109,8 @@ public class SystemLogger implements ILogger {
 		}
 	}
 
-	private boolean isEnabled(Level wanted) {
-		Level own = level;
+	private boolean isEnabled(LogLevel wanted) {
+		LogLevel own = level;
 		//  The levels are in order NONE, ERROR, WARN, INFO, DEBUG
 		if( own != null && wanted.ordinal() > own.ordinal() ) {
 			return false;
@@ -118,7 +118,7 @@ public class SystemLogger implements ILogger {
 		return getLogger().isLoggable(toSystem(wanted));
 	}
 
-	private void log(Level wanted, String msg, Throwable error) {
+	private void log(LogLevel wanted, String msg, Throwable error) {
 		if( isEnabled(wanted) ) {
 			if( error == null ) {
 				getLogger().log(toSystem(wanted), msg);
@@ -129,51 +129,51 @@ public class SystemLogger implements ILogger {
 	}
 
 	public void debug(String msg) {
-		log(Level.DEBUG, msg, null);
+		log(LogLevel.DEBUG, msg, null);
 	}
 
 	public void debug(String msg, Throwable error) {
-		log(Level.DEBUG, msg, error);
+		log(LogLevel.DEBUG, msg, error);
 	}
 
 	public void info(String msg) {
-		log(Level.INFO, msg, null);
+		log(LogLevel.INFO, msg, null);
 	}
 
 	public void info(String msg, Throwable error) {
-		log(Level.INFO, msg, error);
+		log(LogLevel.INFO, msg, error);
 	}
 
 	public void warn(String msg) {
-		log(Level.WARN, msg, null);
+		log(LogLevel.WARN, msg, null);
 	}
 
 	public void warn(String msg, Throwable error) {
-		log(Level.WARN, msg, error);
+		log(LogLevel.WARN, msg, error);
 	}
 
 	public void error(String msg) {
-		log(Level.ERROR, msg, null);
+		log(LogLevel.ERROR, msg, null);
 	}
 
 	public void error(String msg, Throwable error) {
-		log(Level.ERROR, msg, error);
+		log(LogLevel.ERROR, msg, error);
 	}
 
 	public boolean isDebugEnabled() {
-		return isEnabled(Level.DEBUG);
+		return isEnabled(LogLevel.DEBUG);
 	}
 
 	public boolean isInfoEnabled() {
-		return isEnabled(Level.INFO);
+		return isEnabled(LogLevel.INFO);
 	}
 
 	public boolean isWarnEnabled() {
-		return isEnabled(Level.WARN);
+		return isEnabled(LogLevel.WARN);
 	}
 
 	public boolean isErrorEnabled() {
-		return isEnabled(Level.ERROR);
+		return isEnabled(LogLevel.ERROR);
 	}
 
 }
