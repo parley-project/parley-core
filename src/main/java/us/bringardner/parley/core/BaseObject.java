@@ -318,8 +318,16 @@ public class BaseObject {
 	}
 
 	
-	public void setLogLevel(ILogger.Level level) {
+	public void setLogLevel(LogLevel level) {
 		getLogger().setLevel(level);
+	}
+
+	/**
+	 * @return the level of this object's logger
+	 * @since 2.0.0
+	 */
+	public LogLevel getLogLevel() {
+		return getLogger().getLevel();
 	}
 	
 	/**
@@ -936,6 +944,31 @@ public class BaseObject {
 	protected String getLogContext() {
 		return null;
 	}
+
+	/** The ID to put in front of a message: the thread's ({@link LogContext}), else this object's; null for none. */
+	private String logContextNow() {
+		String id = LogContext.get();
+		if( id == null ) {
+			id = getLogContext();
+			if( id != null && id.isEmpty() ) {
+				id = null;
+			}
+		}
+		return id;
+	}
+
+	private static String withContext(String id, String msg) {
+		return id == null ? msg : "["+id+"] "+msg;
+	}
+
+	/** The message with the ID in front. The ID is read now, on the thread that logs; the message is built only if it is written. */
+	private Supplier<String> withContext(Supplier<String> msg) {
+		String id = logContextNow();
+		if( id == null || msg == null ) {
+			return msg;
+		}
+		return () -> withContext(id, msg.get());
+	}
 	
 	public ILogger getLogger() {
 		if( logger == null ) {
@@ -954,10 +987,11 @@ public class BaseObject {
 	 * @param msg The message to log if Debug logging is enabled
 	 */
 	public void logDebug(String msg) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg, Log4JLogger.NO_ERROR);
+			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg, Log4JLogger.NO_ERROR);
 		} else {
 			l.debug(msg);
 		}
@@ -970,10 +1004,11 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Debug logging is enabled
 	 */
 	public void logDebug(Supplier<String> msg) {
+		msg = withContext(msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg);
+			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg);
 		} else {
 			l.debug(msg);
 		}
@@ -984,10 +1019,11 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Debug is enabled 
 	 */
 	public void logDebug(String msg, Throwable error) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.DEBUG, msg, error);
+			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg, error);
 		} else {
 			l.debug(msg, error);
 		}
@@ -997,10 +1033,11 @@ public class BaseObject {
 	 * @param msg The message to log if Error logging is enabled
 	 */
 	public void logError(String msg) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg, Log4JLogger.NO_ERROR);
+			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg, Log4JLogger.NO_ERROR);
 		} else {
 			l.error(msg);
 		}
@@ -1012,10 +1049,11 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Error logging is enabled
 	 */
 	public void logError(Supplier<String> msg) {
+		msg = withContext(msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg);
+			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg);
 		} else {
 			l.error(msg);
 		}
@@ -1026,10 +1064,11 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Error is enabled 
 	 */
 	public void logError(String msg, Throwable error) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.ERROR, msg, error);
+			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg, error);
 		} else {
 			l.error(msg, error);
 		}
@@ -1039,10 +1078,11 @@ public class BaseObject {
 	 * @param msg The message to log if Warn logging is enabled
 	 */
 	public void logWarn(String msg) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg, Log4JLogger.NO_ERROR);
+			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg, Log4JLogger.NO_ERROR);
 		} else {
 			l.warn(msg);
 		}
@@ -1054,10 +1094,11 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Warn logging is enabled
 	 */
 	public void logWarn(Supplier<String> msg) {
+		msg = withContext(msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg);
+			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg);
 		} else {
 			l.warn(msg);
 		}
@@ -1068,10 +1109,11 @@ public class BaseObject {
 	 * @param error The stack trace of the error is logged if Warn is enabled 
 	 */
 	public void logWarn(String msg, Throwable error) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.WARN, msg, error);
+			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg, error);
 		} else {
 			l.warn(msg, error);
 		}
@@ -1081,10 +1123,11 @@ public class BaseObject {
 	 * @param msg The message to log if Info logging is enabled
 	 */
 	public void logInfo(String msg) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg, Log4JLogger.NO_ERROR);
+			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg, Log4JLogger.NO_ERROR);
 		} else {
 			l.info(msg);
 		}
@@ -1096,10 +1139,11 @@ public class BaseObject {
 	 * @param msg Supplies the message to log if Info logging is enabled
 	 */
 	public void logInfo(Supplier<String> msg) {
+		msg = withContext(msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg);
+			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg);
 		} else {
 			l.info(msg);
 		}
@@ -1110,10 +1154,11 @@ public class BaseObject {
 	 * @param error log the stack trace of the error if Info is enabled 
 	 */
 	public void logInfo(String msg, Throwable error) {
+		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
 		if( l != null && l.getClass() == Log4JLogger.class ) {
 			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, ILogger.Level.INFO, msg, error);
+			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg, error);
 		} else {
 			l.info(msg, error);
 		}

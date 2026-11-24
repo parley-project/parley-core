@@ -77,7 +77,7 @@ public class Log4JLogger implements ILogger {
 		static final MethodHandle log;
 		/** Logger.isEnabled(Level) as (Object,Object)boolean */
 		static final MethodHandle isEnabled;
-		/** The log4j2 Level for each ILogger.Level, by ordinal */
+		/** The log4j2 Level for each LogLevel, by ordinal */
 		static final Object[] levelFor;
 
 		static {
@@ -86,7 +86,7 @@ public class Log4JLogger implements ILogger {
 			Method gl=null, getL=null, confSet=null, none=null;
 			MethodHandle lie=null, lg=null, ie=null;
 			Class<?> lc = null, ext = null;
-			Object[] lf = new Object[ILogger.Level.values().length];
+			Object[] lf = new Object[LogLevel.values().length];
 			try {
 				none = Object.class.getMethod("hashCode");
 				ClassLoader cl = Log4JLogger.class.getClassLoader();
@@ -94,11 +94,11 @@ public class Log4JLogger implements ILogger {
 				for(String name : new String[] {"OFF","FATAL","ERROR","WARN","INFO","DEBUG","TRACE","ALL"}) {
 					levels.put(name, lc.getField(name).get(null));
 				}
-				lf[ILogger.Level.NONE.ordinal()] = levels.get("OFF");
-				lf[ILogger.Level.ERROR.ordinal()] = levels.get("ERROR");
-				lf[ILogger.Level.WARN.ordinal()] = levels.get("WARN");
-				lf[ILogger.Level.INFO.ordinal()] = levels.get("INFO");
-				lf[ILogger.Level.DEBUG.ordinal()] = levels.get("DEBUG");
+				lf[LogLevel.NONE.ordinal()] = levels.get("OFF");
+				lf[LogLevel.ERROR.ordinal()] = levels.get("ERROR");
+				lf[LogLevel.WARN.ordinal()] = levels.get("WARN");
+				lf[LogLevel.INFO.ordinal()] = levels.get("INFO");
+				lf[LogLevel.DEBUG.ordinal()] = levels.get("DEBUG");
 
 				Class<?> logMgrClass = Class.forName("org.apache.logging.log4j.LogManager", true, cl);
 				Class<?> api = Class.forName("org.apache.logging.log4j.Logger", true, cl);
@@ -265,7 +265,7 @@ public class Log4JLogger implements ILogger {
 	 * @param msg
 	 * @param error may be null, {@link #NO_ERROR} when the caller used a method without a Throwable
 	 */
-	void log(String fqcn, Level level, String msg, Throwable error) {
+	void log(String fqcn, LogLevel level, String msg, Throwable error) {
 		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			logTo(fb, level, msg, error);
@@ -294,7 +294,7 @@ public class Log4JLogger implements ILogger {
 	 * @param level
 	 * @param msg
 	 */
-	void log(String fqcn, Level level, Supplier<String> msg) {
+	void log(String fqcn, LogLevel level, Supplier<String> msg) {
 		if( isEnabled(level) ) {
 			log(fqcn, level, msg.get(), NO_ERROR);
 		}
@@ -304,7 +304,7 @@ public class Log4JLogger implements ILogger {
 	 * Call the same method on the fallback logger as the caller called on this one 
 	 * (ParleyLogger writes debug(msg) and debug(msg,null) to different streams).
 	 */
-	private static void logTo(ILogger logger, Level level, String msg, Throwable error) {
+	private static void logTo(ILogger logger, LogLevel level, String msg, Throwable error) {
 		boolean one = error == NO_ERROR;
 		switch (level) {
 		case DEBUG: if( one ) logger.debug(msg); else logger.debug(msg, error); break;
@@ -315,7 +315,7 @@ public class Log4JLogger implements ILogger {
 		}
 	}
 
-	boolean isEnabled(Level level) {
+	boolean isEnabled(LogLevel level) {
 		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			switch (level) {
@@ -336,57 +336,57 @@ public class Log4JLogger implements ILogger {
 	}
 
 	public void debug(String msg) {
-		log(FQCN, Level.DEBUG, msg, NO_ERROR);
+		log(FQCN, LogLevel.DEBUG, msg, NO_ERROR);
 	}
 
 	public void debug(String msg, Throwable error) {
-		log(FQCN, Level.DEBUG, msg, error);
+		log(FQCN, LogLevel.DEBUG, msg, error);
 	}
 
 	public void info(String msg) {
-		log(FQCN, Level.INFO, msg, NO_ERROR);
+		log(FQCN, LogLevel.INFO, msg, NO_ERROR);
 	}
 
 	public void info(String msg, Throwable error) {
-		log(FQCN, Level.INFO, msg, error);
+		log(FQCN, LogLevel.INFO, msg, error);
 	}
 
 	public void error(String msg) {
-		log(FQCN, Level.ERROR, msg, NO_ERROR);
+		log(FQCN, LogLevel.ERROR, msg, NO_ERROR);
 	}
 
 	public void error(String msg, Throwable error) {
-		log(FQCN, Level.ERROR, msg, error);
+		log(FQCN, LogLevel.ERROR, msg, error);
 	}
 
 	public void warn(String msg) {
-		log(FQCN, Level.WARN, msg, NO_ERROR);
+		log(FQCN, LogLevel.WARN, msg, NO_ERROR);
 	}
 
 	public void warn(String msg, Throwable error) {
-		log(FQCN, Level.WARN, msg, error);
+		log(FQCN, LogLevel.WARN, msg, error);
 	}
 
 	//  These override the ILogger defaults so the caller log4j reports isn't the ILogger interface
 
 	@Override
 	public void debug(Supplier<String> msg) {
-		log(FQCN, Level.DEBUG, msg);
+		log(FQCN, LogLevel.DEBUG, msg);
 	}
 
 	@Override
 	public void info(Supplier<String> msg) {
-		log(FQCN, Level.INFO, msg);
+		log(FQCN, LogLevel.INFO, msg);
 	}
 
 	@Override
 	public void warn(Supplier<String> msg) {
-		log(FQCN, Level.WARN, msg);
+		log(FQCN, LogLevel.WARN, msg);
 	}
 
 	@Override
 	public void error(Supplier<String> msg) {
-		log(FQCN, Level.ERROR, msg);
+		log(FQCN, LogLevel.ERROR, msg);
 	}
 
 	/**
@@ -412,22 +412,22 @@ public class Log4JLogger implements ILogger {
 	}
 
 	public boolean isDebugEnabled() {
-		return isEnabled(Level.DEBUG);
+		return isEnabled(LogLevel.DEBUG);
 	}
 
 	public boolean isWarnEnabled() {
-		return isEnabled(Level.WARN);
+		return isEnabled(LogLevel.WARN);
 	}
 
 	public boolean isErrorEnabled() {
-		return isEnabled(Level.ERROR);
+		return isEnabled(LogLevel.ERROR);
 	}
 
 	public boolean isInfoEnabled() {
-		return isEnabled(Level.INFO);
+		return isEnabled(LogLevel.INFO);
 	}
 
-	public void setLevel(Level level) {
+	public void setLevel(LogLevel level) {
 		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			fb.setLevel(level);
@@ -483,28 +483,28 @@ public class Log4JLogger implements ILogger {
 
 	}
 
-	public Level getLevel() {	
+	public LogLevel getLevel() {	
 		ParleyLogger fb = fallback;
 		if( fb != null ) {
 			return fb.getLevel();
 		}
-		Level ret = Level.NONE;
+		LogLevel ret = LogLevel.NONE;
 
 		Object val =  invoke(Log4j.getLevel);
 		if( val !=null ) {
 			String name = val.toString();
 			if( "OFF".equals(name)) {
-				ret = Level.NONE;
+				ret = LogLevel.NONE;
 			} else if( "FATAL".equals(name)) {
-				ret = Level.ERROR;
+				ret = LogLevel.ERROR;
 			} else if( "ERROR".equals(name)) {
-				ret = Level.ERROR;
+				ret = LogLevel.ERROR;
 			} else if( "WARN".equals(name)) {
-				ret = Level.WARN;
+				ret = LogLevel.WARN;
 			} else if( "INFO".equals(name)) {
-				ret = Level.INFO;
+				ret = LogLevel.INFO;
 			} else if( "DEBUG".equals(name) || "TRACE".equals(name) || "ALL".equals(name)) {
-				ret = Level.DEBUG;
+				ret = LogLevel.DEBUG;
 			} 
 		}
 		return ret;

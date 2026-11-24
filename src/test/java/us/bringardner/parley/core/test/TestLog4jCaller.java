@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import us.bringardner.parley.core.BaseObject;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.Log4JLogger;
+import us.bringardner.parley.core.LogLevel;
 
 /**
  * Log4j layouts that show the caller (%C %M %L %l) must show the code that logged,
@@ -156,7 +157,7 @@ public class TestLog4jCaller {
 		//  The logger level is INFO
 		assertFalse(logger.isDebugEnabled());
 		assertTrue(logger.isInfoEnabled());
-		assertEquals(ILogger.Level.INFO, logger.getLevel());
+		assertEquals(LogLevel.INFO, logger.getLevel());
 		logger.debug("not logged");
 		logger.debug(() -> { throw new AssertionError("The message must not be built"); });
 		assertTrue(capture.events.isEmpty());
