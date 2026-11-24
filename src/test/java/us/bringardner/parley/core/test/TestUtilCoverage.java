@@ -17,7 +17,6 @@ import javax.net.ServerSocketFactory;
 
 import org.junit.jupiter.api.Test;
 
-import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.util.AbstractCoreServer;
 import us.bringardner.parley.core.util.LogHelper;
 import us.bringardner.parley.core.util.SocketClient;
@@ -180,7 +179,7 @@ public class TestUtilCoverage {
 			assertEquals("127.0.0.1", new Server().getBindAddr().getHostAddress());
 			System.setProperty(key, "[not-a-valid-address");
 			Server svr = new Server();
-			svr.setLogLevel(ILogger.Level.NONE);
+			svr.setLogger(new RecordingLogger());
 			assertThrows(IllegalStateException.class, svr::getBindAddr);
 		} finally {
 			System.clearProperty(key);
@@ -200,8 +199,8 @@ public class TestUtilCoverage {
 
 			System.setProperty(bind, "[not-a-valid-address");
 			Server bad = new Server();
-			RecordingLogger rec = RecordingLoggerFinder.get(Server.class.getName());
-			rec.messages.clear();
+			RecordingLogger rec = new RecordingLogger();
+			bad.setLogger(rec);
 			assertThrows(IllegalStateException.class, bad::getBindAddr);
 			assertTrue(rec.messages.stream().anyMatch(m -> m.startsWith("ERROR Cannot create bindAddress")), "The error should be logged: "+rec.messages);
 		} finally {
