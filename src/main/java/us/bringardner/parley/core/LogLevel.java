@@ -20,8 +20,8 @@ package us.bringardner.parley.core;
 import java.util.Locale;
 
 /**
- * The levels Parley logs at, least to most detail. An object's level ({@link BaseObject#setLogLevel(LogLevel)}
- * or the {@value BaseObject#PROPERTY_LOG_LEVEL} settings) lets through messages at that level and the
+ * The levels Parley logs at, least to most detail. A logger's level (the {@value BaseObject#PROPERTY_LOG_LEVEL}
+ * settings, by logger name) lets through messages at that level and the
  * levels before it: WARN lets ERROR and WARN through. NONE lets nothing through.
  * <p>
  * Messages are written through the JDK's {@link System.Logger}; {@link #toSystemLevel()} and

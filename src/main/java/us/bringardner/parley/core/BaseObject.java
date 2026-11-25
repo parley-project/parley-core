@@ -28,7 +28,8 @@ import java.util.function.Supplier;
  * Logging: Parley code logs with logDebug, logInfo, logWarn and logError, which write to the object's
  * {@link ILogger} (getLogger). The ILogger is created from the class named by the system property
  * {@value #PROPERTY_LOGGER} (JulLogger, SystemLogger, Log4JLogger, or any other ILogger), and is
- * ParleyLogger when it isn't set. setLogLevel sets the object's level. A message starts with the ID of
+ * ParleyLogger when it isn't set. A logger's level belongs to its name, not to the object: see
+ * {@value #PROPERTY_LOG_LEVEL}. A message starts with the ID of
  * the work it belongs to ([pop3-4127]) when the thread has one, see LogContext.
  *
  *
@@ -145,47 +146,13 @@ public class BaseObject {
 	 * Null until one is set: the prefix is then the class name.
 	 */
 	private volatile String[] propertyPrefixes;
-	/** This object's own settings, or null: read them from the system properties */
-	private volatile Properties configuration;
-
 
 	/**
 	 * BaseObject constructor  
 	 */
 	public BaseObject()  {
 		super();
-		this.configuration = MAKING_WITH.get();
 	}
-
-	/** The configuration objects made on this thread get ({@link #makeWith}) */
-	private static final ThreadLocal<Properties> MAKING_WITH = new ThreadLocal<>();
-
-	/**
-	 * Make an object (a server, say) with settings of its own: every BaseObject made on this thread
-	 * while make runs starts with this configuration ({@link #setConfiguration(Properties)}), so
-	 * what its constructor reads comes from the configuration too.
-	 *
-	 * @param configuration the settings, or null for the system properties
-	 * @param make          makes the object
-	 * @return what make made
-	 * @throws Exception what make throws
-	 * @since 2.0.0
-	 */
-	public static <T> T makeWith(Properties configuration, java.util.concurrent.Callable<T> make) throws Exception {
-		Properties before = MAKING_WITH.get();
-		MAKING_WITH.set(configuration);
-		try {
-			return make.call();
-		} finally {
-			if( before == null ) {
-				MAKING_WITH.remove();
-			} else {
-				MAKING_WITH.set(before);
-			}
-		}
-	}
-
-
 
 	/**
 	 * The prefix of this object's settings, which {@link #propertyName(String)} puts in front of a
@@ -262,7 +229,7 @@ public class BaseObject {
 	/**
 	 * The value of a setting that the objects of a protocol can share, or null: the first value found for
 	 * <code>prefix.name</code>, trying the prefixes of {@link #setPropertyPrefixes(String...)} in order. Each
-	 * name is looked up completely (the configuration or the system properties, then the properties files) before
+	 * name is looked up completely (the system properties, then the properties files) before
 	 * the next one is tried, so the more specific prefix wins wherever its value comes from. With one prefix
 	 * (the usual) it is {@code getProperty(propertyName(name))}. Nothing else is searched: no class name and no
 	 * name without a prefix.
@@ -318,73 +285,6 @@ public class BaseObject {
 	}
 
 	
-	public void setLogLevel(LogLevel level) {
-		getLogger().setLevel(level);
-	}
-
-	/**
-	 * @return the level of this object's logger
-	 * @since 2.0.0
-	 */
-	public LogLevel getLogLevel() {
-		return getLogger().getLevel();
-	}
-	
-	/**
-	 * Give this object settings of its own. {@link #getProperty(String, String)} then looks a name
-	 * up in them, and in the properties files of its class chain for defaults, and never in the
-	 * system properties: two objects in one JVM (two servers, say) can then have different values
-	 * for the same setting. With no configuration (the default) the system properties are read, as
-	 * for an object alone in its JVM.
-	 *
-	 * @param configuration the settings, or null to read the system properties again
-	 * @since 2.0.0
-	 */
-	public void setConfiguration(Properties configuration) {
-		this.configuration = configuration;
-		reconfigureLogger();
-	}
-
-	/** A logger this object made reads the old configuration: give it the new one and start it again ({@link ILogger#init(String)}) */
-	private void reconfigureLogger() {
-		synchronized (this) {
-			ILogger l = logger;
-			if( loggerMadeHere && l instanceof BaseObject ) {
-				((BaseObject) l).useConfigurationOf(this);
-				l.init(loggerName);
-			}
-		}
-	}
-
-	/**
-	 * @return the settings given with {@link #setConfiguration(Properties)}, or null when this
-	 *         object reads the system properties
-	 * @since 2.0.0
-	 */
-	public Properties getConfiguration() {
-		return configuration;
-	}
-
-	/**
-	 * Read the same settings as another object (a server's helper, say): its configuration, or the
-	 * system properties when it has none.
-	 *
-	 * @param other the object whose settings to use; null is ignored
-	 * @since 2.0.0
-	 */
-	public void useConfigurationOf(BaseObject other) {
-		if( other != null ) {
-			this.configuration = other.getConfiguration();
-			reconfigureLogger();
-		}
-	}
-
-	/** A setting from this object's configuration, or the system properties when it has none */
-	private String fromConfiguration(String propertyName) {
-		Properties c = configuration;
-		return c != null ? c.getProperty(propertyName) : System.getProperty(propertyName);
-	}
-
 	/**
 	 * The full name of one of this object's settings: its property prefix, a dot and the name
 	 * (<code>parley.mail.pop3</code> and <code>port</code> make <code>parley.mail.pop3.port</code>), or the
@@ -561,7 +461,7 @@ public class BaseObject {
 	 * Find a property by exactly the name given: nothing is added to it. The first value found is
 	 * returned:
 	 * <ol>
-	 * <li>The object's configuration ({@link #setConfiguration(Properties)}) when it has one, else the system property <code>propertyName</code>.</li>
+	 * <li>The system property <code>propertyName</code>.</li>
 	 * <li>The properties file named after the class (for example <code>/com/example/Mailer.properties</code>),
 	 *     then the properties files of each super class, up to (not including) BaseObject. Inner classes
 	 *     use the file of their outer class.</li>
@@ -704,7 +604,7 @@ public class BaseObject {
 	 * always: the properties files to search come from its {@link LookupPlan}.
 	 */
 	private String findProperty(LookupPlan plan, String propertyName) {
-		String ret = fromConfiguration(propertyName);
+		String ret = System.getProperty(propertyName);
 		for(int i = 0; ret == null && i < plan.classes.length; i++) {
 			Properties p = plan.entry(i);
 			if( p != MISSING ) {
@@ -716,7 +616,7 @@ public class BaseObject {
 
 	/** The search for an object whose {@link #getPropertyClass()} is not its own class. */
 	private String findPropertyOf(Class<?> start, String propertyName) {
-		String ret = fromConfiguration(propertyName);
+		String ret = System.getProperty(propertyName);
 		for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
 			String path = cls.getName();
 			int idx = path.indexOf('$');
@@ -824,8 +724,7 @@ public class BaseObject {
 	 * Sets the level of Parley's loggers when nothing else does (NONE, ERROR, WARN, INFO, DEBUG, see
 	 * {@link LogLevel#parse(String, LogLevel)}). One logger, or every logger under a name, gets its own
 	 * with a longer name: {@code parley.log.level.pop3}, {@code parley.log.level.pop3.server.Pop3Server};
-	 * the nearest one set wins (see {@link #levelName(String)}). Read with {@link #getProperty(String)},
-	 * so an object with a configuration of its own ({@link #setConfiguration(Properties)}) reads it there.
+	 * the nearest one set wins (see {@link #levelName(String)}). Read with {@link #getProperty(String)}.
 	 * @since 2.0.0
 	 */
 	public static final String PROPERTY_LOG_LEVEL = "parley.log.level";
@@ -843,14 +742,6 @@ public class BaseObject {
 
 	private volatile ILogger logger;
 
-	/** True when {@link #logger} was made by this object (not given with {@link #setLogger(ILogger)}), so a change of configuration is passed on to it */
-	private volatile boolean loggerMadeHere;
-
-	/** The name {@link #logger} was started with */
-	private volatile String loggerName;
-
-	
-
 	/**
 	 * Find the ILogger for his name.  
 	 * 
@@ -864,14 +755,8 @@ public class BaseObject {
 					Class<?> loggerClass = getLoggerClass();
 					try {
 						ILogger tmp = (ILogger) loggerClass.getDeclaredConstructor().newInstance();
-						if (tmp instanceof BaseObject) {
-							// the logger reads its settings where its owner does, not from the system properties
-							((BaseObject) tmp).useConfigurationOf(this);
-						}
 						tmp.init(name);
-						loggerName = name;
 						logger = tmp;
-						loggerMadeHere = true;
 					} catch (Exception e) {
 						throw new IllegalStateException("Fatal error occured attempting to create ILogger. loggerClass="+loggerClass,e);
 					}
@@ -1235,7 +1120,6 @@ public class BaseObject {
 	public void setLogger(ILogger logger) {
 		synchronized (this) {
 			this.logger = logger;
-			loggerMadeHere = false;
 		}
 	}
 }

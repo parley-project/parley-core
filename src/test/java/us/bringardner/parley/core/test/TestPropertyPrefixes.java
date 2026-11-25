@@ -26,11 +26,25 @@ public class TestPropertyPrefixes {
 		for(String n : SYSTEM_NAMES) {
 			System.clearProperty(n);
 		}
+		for(String n : SET_HERE) {
+			System.clearProperty(n);
+		}
+		SET_HERE.clear();
+	}
+
+	/** The system properties a test set with {@link #server(Properties, String...)}, cleared after it */
+	private static final java.util.Set<String> SET_HERE = new java.util.HashSet<>();
+
+	private static void setSystem(Properties settings) {
+		for(String n : settings.stringPropertyNames()) {
+			System.setProperty(n, settings.getProperty(n));
+			SET_HERE.add(n);
+		}
 	}
 
 	private static PrefixTarget server(Properties settings, String... prefixes) {
 		PrefixTarget ret = new PrefixTarget(prefixes);
-		ret.setConfiguration(settings);
+		setSystem(settings);
 		return ret;
 	}
 
@@ -106,7 +120,7 @@ public class TestPropertyPrefixes {
 		assertEquals(one.getProperty(one.propertyName("shared")), one.getInheritedProperty("shared"));
 		PrefixTarget none = server(settings());
 		assertEquals(none.getProperty(none.propertyName("zzz")), none.getInheritedProperty("zzz"));
-		none.setConfiguration(settings(none.getClass().getName() + ".zzz", "by class"));
+		setSystem(settings(none.getClass().getName() + ".zzz", "by class"));
 		assertEquals("by class", none.getInheritedProperty("zzz"), "the default prefix is the class name, as it was");
 	}
 
