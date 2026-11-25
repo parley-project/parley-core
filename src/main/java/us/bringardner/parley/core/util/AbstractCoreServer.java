@@ -474,6 +474,20 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	}
 
 	/**
+	 * The name of a settings file in the settings folder that servers of a kind share, e.g.
+	 * parley-mail.properties; null (the default) for a server that has none. It is read, if it is there,
+	 * before the server's own file, which wins over it.
+	 */
+	protected String getSharedSettingsFileName() {
+		return null;
+	}
+
+	/** The folder of the default settings files (Parley's administrator folder: /etc/parley ...) */
+	protected String getSettingsFolder() {
+		return us.bringardner.parley.plugin.PluginFolders.confDir();
+	}
+
+	/**
 	 * The setting that names a settings file, which has to be there when it is set. It is
 	 * read before the file is, so it comes from the system properties or an earlier file.
 	 */
@@ -523,6 +537,21 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	protected final Throwable prepareToStart() {
 		java.util.List<String> problems = new java.util.ArrayList<>();
 		String where = null;
+		boolean shared = false;
+		try {
+			if( getSharedSettingsFileName() != null ) {
+				String sharedName = getSettingsFolder()+"/"+getSharedSettingsFileName();
+				us.bringardner.parley.core.SettingsFile s = findSettingsFile(sharedName);
+				if( s != null ) {
+					shared = true;
+					settingsFileRead(s);
+					addSettings(s.getProperties());
+					logInfo("Server "+getName()+" read the shared settings from "+sharedName);
+				}
+			}
+		} catch(IOException | RuntimeException e) {
+			problems.add("the shared settings file can't be used: "+e.getMessage());
+		}
 		try {
 			String named = getProperty(getSettingsFileProperty());
 			us.bringardner.parley.core.SettingsFile found;
@@ -530,7 +559,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 				where = named.trim();
 				found = readSettingsFile(where);
 			} else if( getSettingsFileName() != null ) {
-				where = us.bringardner.parley.plugin.PluginFolders.confDir()+"/"+getSettingsFileName();
+				where = getSettingsFolder()+"/"+getSettingsFileName();
 				found = findSettingsFile(where);	// (not there is fine)
 			} else {
 				found = null;
@@ -538,10 +567,12 @@ public abstract class AbstractCoreServer extends BaseThread  {
 			if( found != null ) {
 				settingsFileRead(found);
 				addSettings(found.getProperties());
-				applyLogLevelSetting();
 				logInfo("Server "+getName()+" read its settings from "+where);
 			}
-			settingsRead(found != null);
+			if( found != null || shared ) {
+				applyLogLevelSetting();
+			}
+			settingsRead(found != null || shared);
 		} catch(IOException | RuntimeException e) {
 			problems.add("the settings file "+where+" can't be used: "+e.getMessage());
 		}
