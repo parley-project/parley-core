@@ -482,6 +482,16 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	}
 
 	/**
+	 * Called with the settings of the file the server has just read, before they are used: a place to
+	 * tell the administrator about a name nothing reads (a misspelling). The default does nothing.
+	 *
+	 * @param where the file's name, as the resolvers found it
+	 * @param found the settings in it (and in the files it includes)
+	 */
+	protected void settingsFileRead(String where, java.util.Properties found) {
+	}
+
+	/**
 	 * Called when the server starts, after its settings file was looked for and before the settings
 	 * are checked. A server that took values from its settings when it was made takes them again when
 	 * a file was read (and not otherwise: what was set in code since it was made stays).
@@ -527,6 +537,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 				found = null;
 			}
 			if( found != null ) {
+				settingsFileRead(where, found);
 				addSettings(found);
 				applyLogLevelSetting();
 				logInfo("Server "+getName()+" read its settings from "+where);
