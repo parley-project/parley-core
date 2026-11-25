@@ -55,7 +55,7 @@ import us.bringardner.parley.core.ILogger;
 @State(Scope.Benchmark)
 public class BatchedLoggerBenchmark {
 
-	@Param({LoggerFixture.PARLEY, LoggerFixture.JUL, LoggerFixture.LOG4J, LoggerFixture.SYSTEM})
+	@Param({LoggerFixture.PARLEY, LoggerFixture.SYSTEM})
 	public String loggerType;
 
 	LoggerFixture fixture;

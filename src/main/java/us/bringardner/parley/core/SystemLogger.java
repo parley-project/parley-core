@@ -15,9 +15,9 @@ package us.bringardner.parley.core;
  *
  *  Two things work differently from the other ILoggers:
  *
- *  1) System.Logger can't set a level; the logging system behind it decides what is logged.
- *     setLevel sets a level of this logger's own, in front of that: a message is logged only when
- *     both this level and the logging system allow it. setLevel(null) removes it again.
+ *  1) System.Logger can't set a level; the logging system behind it decides what is logged, so
+ *     this logger passes every message on and setLevel does nothing. Set levels in that system's own
+ *     configuration (log4j2.xml, logback.xml, logging.properties).
  *
  *  2) System.Logger can't be told which code logged. The logging system works that out itself
  *     and may report SystemLogger or BaseObject as the source of a message.
@@ -45,8 +45,6 @@ public class SystemLogger implements ILogger {
 
 	private volatile System.Logger logger;
 
-	//  This logger's own level, or null to leave it all to the logging system
-	private volatile LogLevel level;
 
 	/**
 	 * @return the System.Logger messages go to
@@ -66,22 +64,19 @@ public class SystemLogger implements ILogger {
 	}
 
 	/**
-	 * Set this logger's own level. Messages above it are not logged, whatever the logging system
-	 * allows; messages at or below it are logged if the logging system allows them too.
+	 * Does nothing: the logging system behind System.Logger decides what is logged.
 	 *
-	 * @param level the level, or null to leave it all to the logging system again
+	 * @param level ignored
 	 */
 	public void setLevel(LogLevel level) {
-		this.level = level;
 	}
 
 	/**
-	 * @return the level set with setLevel, or, when none is, the most detailed level the logging
-	 *         system logs for this name (NONE when it logs nothing)
+	 * @return the most detailed level the logging system logs for this name (NONE when it logs nothing)
 	 */
 	public LogLevel getLevel() {
-		LogLevel ret = level;
-		if( ret == null ) {
+		LogLevel ret;
+		{
 			System.Logger tmp = getLogger();
 			if( tmp.isLoggable(System.Logger.Level.DEBUG) ) {
 				ret = LogLevel.DEBUG;
@@ -110,11 +105,6 @@ public class SystemLogger implements ILogger {
 	}
 
 	private boolean isEnabled(LogLevel wanted) {
-		LogLevel own = level;
-		//  The levels are in order NONE, ERROR, WARN, INFO, DEBUG
-		if( own != null && wanted.ordinal() > own.ordinal() ) {
-			return false;
-		}
 		return getLogger().isLoggable(toSystem(wanted));
 	}
 

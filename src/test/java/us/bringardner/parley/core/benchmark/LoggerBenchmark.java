@@ -40,7 +40,7 @@ import us.bringardner.parley.core.ILogger;
 
 /**
  * Compares the performance of the four ILogger implementations in parley-core:
- * ParleyLogger, JulLogger, Log4JLogger and SystemLogger.
+ * ParleyLogger and SystemLogger.
  * <p>
  * It is a JMH benchmark, not a unit test: surefire doesn't run it. Run it with
  * <pre>
@@ -79,7 +79,7 @@ import us.bringardner.parley.core.ILogger;
 @State(Scope.Benchmark)
 public class LoggerBenchmark {
 
-	@Param({LoggerFixture.PARLEY, LoggerFixture.JUL, LoggerFixture.LOG4J, LoggerFixture.SYSTEM})
+	@Param({LoggerFixture.PARLEY, LoggerFixture.SYSTEM})
 	public String loggerType;
 
 	LoggerFixture fixture;

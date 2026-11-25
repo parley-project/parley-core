@@ -28,8 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import us.bringardner.parley.core.ILogger;
-import us.bringardner.parley.core.JulLogger;
-import us.bringardner.parley.core.Log4JLogger;
 import us.bringardner.parley.core.LogLevel;
 import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.SystemLogger;
@@ -47,20 +45,17 @@ import us.bringardner.parley.core.SystemLogger;
  * <li>Batched: entries are collected and written together.
  *   <ol>
  *   <li>ParleyLogger: its parley.log.flushInterval setting ({@link #FLUSH_INTERVAL_MS}).</li>
- *   <li>Log4JLogger: log4j's immediateFlush="false"; log4j writes when its 8 KB buffer is full (it has no timer).</li>
- *   <li>JulLogger and SystemLogger: java.util.logging has no setting for it (its FileHandler writes every
+ *   <li>SystemLogger: java.util.logging has no setting for it (its FileHandler writes every
  *       entry), so a FileHandler that leaves the writing to a timer ({@link BatchedFileHandler}) is used.</li>
  *   </ol></li>
  * </ol>
  * SystemLogger has no file settings of its own; with nothing else installed behind System.Logger it goes
- * to java.util.logging, which is set up as it is for JulLogger.
+ * to java.util.logging.
  */
 final class LoggerFixture implements AutoCloseable {
 
 	/** The logger types, the values of the benchmarks' loggerType parameter. */
 	static final String PARLEY = "ParleyLogger";
-	static final String JUL = "JulLogger";
-	static final String LOG4J = "Log4JLogger";
 	static final String SYSTEM = "SystemLogger";
 
 	/** The name every logger is created with. */
@@ -73,7 +68,6 @@ final class LoggerFixture implements AutoCloseable {
 	static final long FLUSH_INTERVAL_MS = 500;
 
 	/** The layout of an entry: like ParleyLogger's (time, thread where available, level, logger name, message). */
-	static final String LOG4J_PATTERN = "%d{MM-dd-yyyy HH:mm:ss.SSS} [%t] %p %c - %m%n";
 	static final String JUL_FORMAT = "%1$tm-%1$td-%1$tY %1$tH:%1$tM:%1$tS.%1$tL %4$s %3$s - %5$s%6$s%n";
 
 	final ILogger logger;
@@ -83,7 +77,7 @@ final class LoggerFixture implements AutoCloseable {
 	private ScheduledExecutorService julFlusher;
 
 	/**
-	 * @param type one of {@link #PARLEY}, {@link #JUL}, {@link #LOG4J} or {@link #SYSTEM}
+	 * @param type one of {@link #PARLEY} or {@link #SYSTEM}
 	 * @param batched true to collect entries and write them together, false to write each one as it is logged
 	 */
 	LoggerFixture(String type, boolean batched) throws IOException {
@@ -102,14 +96,7 @@ final class LoggerFixture implements AutoCloseable {
 				}
 				logger = new ParleyLogger();
 				break;
-			case JUL:
-				logger = new JulLogger();
-				break;
-			case LOG4J:
-				System.setProperty("log4j2.configurationFile", writeLog4jConfig(file, batched).toString());
-				logger = new Log4JLogger();
-				break;
-			case SYSTEM:
+					case SYSTEM:
 				logger = new SystemLogger();
 				break;
 			default:
@@ -118,8 +105,7 @@ final class LoggerFixture implements AutoCloseable {
 
 			logger.init(LOGGER_NAME);
 
-			if( logger instanceof JulLogger || logger instanceof SystemLogger ) {
-				//  After init: JulLogger reads its JulLogging.properties there, which adds a console handler
+			if( logger instanceof SystemLogger ) {
 				useJulFile(file, batched);
 			}
 
@@ -161,26 +147,6 @@ final class LoggerFixture implements AutoCloseable {
 		root.setLevel(java.util.logging.Level.INFO);
 	}
 
-	private Path writeLog4jConfig(Path file, boolean batched) throws IOException {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-				+ "<Configuration status=\"WARN\">\n"
-				+ "  <Appenders>\n"
-				+ "    <RollingFile name=\"file\" fileName=\"" + file + "\" filePattern=\"" + file + ".%i\""
-				+ " immediateFlush=\"" + !batched + "\" bufferedIO=\"true\">\n"
-				+ "      <PatternLayout pattern=\"" + LOG4J_PATTERN + "\"/>\n"
-				+ "      <SizeBasedTriggeringPolicy size=\"" + MAX_FILE_SIZE + "\"/>\n"
-				+ "      <DefaultRolloverStrategy max=\"1\"/>\n"
-				+ "    </RollingFile>\n"
-				+ "  </Appenders>\n"
-				+ "  <Loggers>\n"
-				+ "    <Root level=\"INFO\"><AppenderRef ref=\"file\"/></Root>\n"
-				+ "  </Loggers>\n"
-				+ "</Configuration>\n";
-		Path config = dir.resolve("log4j2-benchmark.xml");
-		Files.writeString(config, xml);
-		return config;
-	}
-
 	/**
 	 * Write anything still waiting, close the log file and stop the timer, and remove the temporary folder.
 	 */
@@ -190,9 +156,6 @@ final class LoggerFixture implements AutoCloseable {
 			switch (type) {
 			case PARLEY:
 				ParleyLogger.closeLogFiles();
-				break;
-			case LOG4J:
-				org.apache.logging.log4j.LogManager.shutdown();
 				break;
 			default:
 				if( julFlusher != null ) {

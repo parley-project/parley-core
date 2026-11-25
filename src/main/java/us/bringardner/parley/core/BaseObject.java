@@ -27,7 +27,7 @@ import java.util.function.Supplier;
  *
  * Logging: Parley code logs with logDebug, logInfo, logWarn and logError, which write to the object's
  * {@link ILogger} (getLogger). The ILogger is created from the class named by the system property
- * {@value #PROPERTY_LOGGER} (JulLogger, SystemLogger, Log4JLogger, or any other ILogger), and is
+ * {@value #PROPERTY_LOGGER} (SystemLogger, or any other ILogger), and is
  * ParleyLogger when it isn't set. A logger's level belongs to its name, not to the object: see
  * {@value #PROPERTY_LOG_LEVEL}. A message starts with the ID of
  * the work it belongs to ([pop3-4127]) when the thread has one, see LogContext.
@@ -735,9 +735,6 @@ public class BaseObject {
 	public static final String PROPERTY_LOGGER = "parley.logger";
 	
 
-	/** Log4j is told this is a logging "wrapper" class, so it reports the code that called logError (etc.) as the caller. */
-	private static final String FQCN = BaseObject.class.getName();
-
 	private static Class<?> loggerClass;
 
 	private volatile ILogger logger;
@@ -772,7 +769,7 @@ public class BaseObject {
 	 * runtime dependencies to third party libraries. 
 	 * 
 	 * 1)  The System.property "parley.logger" ({@value #PROPERTY_LOGGER}) is defined, that class is used
-	 *     (JulLogger, SystemLogger, Log4JLogger or any other ILogger).
+	 *     (SystemLogger or any other ILogger).
 	 * 2)  The default is ParleyLogger.
 	 * 
 	 * @return the Class used to create ILoggers
@@ -914,12 +911,7 @@ public class BaseObject {
 	public void logDebug(String msg) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.debug(msg);
-		}
+		l.debug(msg);
 	}
 
 	/**
@@ -931,12 +923,7 @@ public class BaseObject {
 	public void logDebug(Supplier<String> msg) {
 		msg = withContext(msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg);
-		} else {
-			l.debug(msg);
-		}
+		l.debug(msg);
 	}
 
 	/**
@@ -946,12 +933,7 @@ public class BaseObject {
 	public void logDebug(String msg, Throwable error) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.DEBUG, msg, error);
-		} else {
-			l.debug(msg, error);
-		}
+		l.debug(msg, error);
 	}
 
 	/**
@@ -960,12 +942,7 @@ public class BaseObject {
 	public void logError(String msg) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.error(msg);
-		}
+		l.error(msg);
 	}
 
 	/**
@@ -976,12 +953,7 @@ public class BaseObject {
 	public void logError(Supplier<String> msg) {
 		msg = withContext(msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg);
-		} else {
-			l.error(msg);
-		}
+		l.error(msg);
 	}
 
 	/**
@@ -991,12 +963,7 @@ public class BaseObject {
 	public void logError(String msg, Throwable error) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.ERROR, msg, error);
-		} else {
-			l.error(msg, error);
-		}
+		l.error(msg, error);
 	}
 
 	/**
@@ -1005,12 +972,7 @@ public class BaseObject {
 	public void logWarn(String msg) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.warn(msg);
-		}
+		l.warn(msg);
 	}
 
 	/**
@@ -1021,12 +983,7 @@ public class BaseObject {
 	public void logWarn(Supplier<String> msg) {
 		msg = withContext(msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg);
-		} else {
-			l.warn(msg);
-		}
+		l.warn(msg);
 	}
 
 	/**
@@ -1036,12 +993,7 @@ public class BaseObject {
 	public void logWarn(String msg, Throwable error) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.WARN, msg, error);
-		} else {
-			l.warn(msg, error);
-		}
+		l.warn(msg, error);
 	}
 
 	/**
@@ -1050,12 +1002,7 @@ public class BaseObject {
 	public void logInfo(String msg) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg, Log4JLogger.NO_ERROR);
-		} else {
-			l.info(msg);
-		}
+		l.info(msg);
 	}
 
 	/**
@@ -1066,12 +1013,7 @@ public class BaseObject {
 	public void logInfo(Supplier<String> msg) {
 		msg = withContext(msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg);
-		} else {
-			l.info(msg);
-		}
+		l.info(msg);
 	}
 
 	/**
@@ -1081,12 +1023,7 @@ public class BaseObject {
 	public void logInfo(String msg, Throwable error) {
 		msg = withContext(logContextNow(), msg);
 		ILogger l = getLogger();
-		if( l != null && l.getClass() == Log4JLogger.class ) {
-			//  so log4j reports our caller, not this class, as the caller (only Log4JLogger itself: a subclass may override the ILogger methods)
-			((Log4JLogger) l).log(FQCN, LogLevel.INFO, msg, error);
-		} else {
-			l.info(msg, error);
-		}
+		l.info(msg, error);
 	}
 
 	/**
