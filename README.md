@@ -522,6 +522,47 @@ coverage report to `target/site/jacoco/index.html`.
 - The SSL server test uses `keytool` (from the JDK) to create a test key store if needed.
 - The tests install their own `System.LoggerFinder` (`RecordingLoggerFinder`, in the test resources), so they can check what was logged.
 
+### Logger benchmark
+
+`LoggerBenchmark` (in `src/test/java`) is a [JMH](https://github.com/openjdk/jmh) benchmark that
+compares the four `ILogger` implementations: `ParleyLogger`, `JulLogger`, `Log4JLogger` and
+`SystemLogger`. It measures level checks, `debug` calls when debug is off (with a constant message,
+a concatenated one and a `Supplier`), `info` written to a file from one thread and from four, and
+`warn` with a stack trace, every entry written to the file as soon as it is logged.
+`BatchedLoggerBenchmark` measures the file-writing cases again with entries collected and written
+together: `ParleyLogger` with `parley.log.flushInterval=500ms`, `Log4JLogger` with log4j's
+`immediateFlush="false"` (written when its 8 KB buffer is full), and `JulLogger` and `SystemLogger`
+with a `java.util.logging` `FileHandler` that writes every 500 ms (`java.util.logging` has no setting
+for it). Run them with
+
+```bash
+mvn -Pbenchmark test
+```
+
+It takes about 11 minutes. The benchmark profile builds in `target/benchmark` (apart from Eclipse's
+classes) and runs the benchmarks in place of the unit tests; normal builds don't run it. After JMH's
+own table it prints how the loggers compare, also saved to `target/benchmark/relative.txt`:
+
+1. Every entry written at once: for each benchmark the fastest logger is 1.00, the others multiples of its time.
+2. Batched: the same, among the batched loggers.
+3. Batched against every entry written at once: each logger's batched time divided by its own unbatched
+   time (0.25 is four times faster batched).
+
+JMH options go in `-Djmh.args` (they replace the default, which also writes
+`target/benchmark/logger-benchmark.json`). For example:
+
+```bash
+# 3 JVMs per benchmark, for steadier results with an error margin
+mvn -Pbenchmark test -Djmh.args="LoggerBenchmark -f 3"
+# only the info benchmarks, 8 threads, two of the loggers
+mvn -Pbenchmark test -Djmh.args="LoggerBenchmark.info -t 8 -p loggerType=ParleyLogger,Log4JLogger"
+# JMH's own help
+mvn -Pbenchmark test -Djmh.args="-h"
+```
+
+Results are for comparing loggers, or one version against another, on the same machine and JDK.
+Differences under a nanosecond (the `debug` benchmarks) are within noise unless they hold up with `-f 3`.
+
 ## Releasing
 
 Set the new version in `pom.xml` (and the parent's, if it changed), then
