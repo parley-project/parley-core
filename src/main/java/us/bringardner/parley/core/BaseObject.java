@@ -92,6 +92,40 @@ public class BaseObject {
 	private static volatile int maxProperties = DEFAULT_MAX_PROPERTIES;
 
 	/**
+	 * The settings a server read from its settings file when it started (see {@link #addSettings}).
+	 * Process wide, searched by every BaseObject after the system properties and before the
+	 * properties files of the class chain (which hold the defaults).
+	 */
+	private static final ConcurrentHashMap<String, String> settings = new ConcurrentHashMap<>();
+
+	/**
+	 * Add settings, usually those a server read from its settings file when it started. They win
+	 * over the defaults in a class's properties file and lose to system properties (set with
+	 * -D), so the order is: system properties, then settings, then the class's properties
+	 * files, then the default in code. A name added again takes the new value (a restart reads
+	 * its file again). Not per object: every BaseObject in the process sees them, so
+	 * {@code parley.log.level.*} in a server's file reaches loggers too.
+	 *
+	 * @param values the names and values; null values are ignored
+	 */
+	public static void addSettings(Properties values) {
+		for(String name : values.stringPropertyNames()) {
+			settings.put(name, values.getProperty(name));
+		}
+	}
+
+	/** Forget the settings added with {@link #addSettings} */
+	public static void clearSettings() {
+		settings.clear();
+	}
+
+	/** system property, then added setting */
+	private static String settingOf(String propertyName) {
+		String ret = System.getProperty(propertyName);
+		return ret != null ? ret : settings.get(propertyName);
+	}
+
+	/**
 	 * @param maxSize the most properties files kept in the cache for each class loader, 0 (or less) for no limit. 
 	 *  When there are more, some (not necessarily the least recently used) are dropped and read again when needed.
 	 */
@@ -604,7 +638,7 @@ public class BaseObject {
 	 * always: the properties files to search come from its {@link LookupPlan}.
 	 */
 	private String findProperty(LookupPlan plan, String propertyName) {
-		String ret = System.getProperty(propertyName);
+		String ret = settingOf(propertyName);
 		for(int i = 0; ret == null && i < plan.classes.length; i++) {
 			Properties p = plan.entry(i);
 			if( p != MISSING ) {
@@ -616,7 +650,7 @@ public class BaseObject {
 
 	/** The search for an object whose {@link #getPropertyClass()} is not its own class. */
 	private String findPropertyOf(Class<?> start, String propertyName) {
-		String ret = System.getProperty(propertyName);
+		String ret = settingOf(propertyName);
 		for(Class<?> cls = start; ret == null && cls != null && cls != BaseObject.class; cls = cls.getSuperclass()) {
 			String path = cls.getName();
 			int idx = path.indexOf('$');
