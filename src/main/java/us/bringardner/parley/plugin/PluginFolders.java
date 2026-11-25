@@ -151,6 +151,15 @@ public final class PluginFolders {
 		return new File("/etc/parley/parley.properties");
 	}
 
+	/**
+	 * The folder of Parley's administrator file: /etc/parley (Windows %ProgramData%\Parley), or the
+	 * folder of the file the PARLEY_CONF environment variable names. The settings files of the servers are there.
+	 */
+	public static String confDir() {
+		return adminFile(System.getenv(), System.getProperty("os.name", "").toLowerCase().startsWith("windows"))
+				.getAbsoluteFile().getParent();
+	}
+
 	/** the file's properties, or none if it is not there or cannot be read */
 	public static Properties readProperties(File file) {
 		Properties ret = new Properties();

@@ -114,6 +114,66 @@ public class BaseObject {
 		}
 	}
 
+	/**
+	 * Read a settings file, found the way an include is: on the class path first, then by the
+	 * {@link IncludeResolver}s listed as services (parley-net's reads files and filesource: URLs).
+	 * The file may include others with {@code parley.include}. Nothing is added: see {@link #addSettings}.
+	 *
+	 * @param name the file's name as the resolvers know it (a path, a filesource: URL ...)
+	 * @return the settings, or null if no resolver knows the file
+	 * @throws IOException if the file or one it includes can't be read, or an include is wrong
+	 */
+	public static Properties findSettingsFile(String name) throws IOException {
+		IncludeResolver resolver = PropertiesReader.standard(BaseObject.class);
+		IncludeResolver.Found found = resolver.find(null, name);
+		if( found == null ) {
+			return null;
+		}
+		try(InputStream in = found.getStream()) {
+			return PropertiesReader.read(in, found.getName(), resolver);
+		} catch(IllegalStateException e) {
+			throw new IOException("Settings file "+name+" "+e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Like {@link #findSettingsFile(String)} for a file that has to be there.
+	 *
+	 * @throws java.io.FileNotFoundException if no resolver knows the file
+	 */
+	public static Properties readSettingsFile(String name) throws IOException {
+		Properties ret = findSettingsFile(name);
+		if( ret == null ) {
+			throw new java.io.FileNotFoundException("Settings file "+name+" isn't there");
+		}
+		return ret;
+	}
+
+	/**
+	 * Gives this object's logger the level the settings now say: the nearest of parley.log.level.NAME (NAME is
+	 * the logger's name, then each shorter name) and parley.log.level. A logger reads its level once, so
+	 * settings read after it was made have to be applied. Nothing is changed when no level is set.
+	 */
+	protected void applyLogLevelSetting() {
+		String name = levelName(getLoggerName());
+		String value = null;
+		while( value == null && !name.isEmpty() ) {
+			value = nonEmptySetting(getProperty(PROPERTY_LOG_LEVEL + "." + name));
+			int dot = name.lastIndexOf('.');
+			name = dot < 0 ? "" : name.substring(0, dot);
+		}
+		if( value == null ) {
+			value = nonEmptySetting(getProperty(PROPERTY_LOG_LEVEL));
+		}
+		if( value != null ) {
+			getLogger().setLevel(LogLevel.parse(value, getLogger().getLevel()));
+		}
+	}
+
+	private static String nonEmptySetting(String value) {
+		return value == null || value.trim().isEmpty() ? null : value;
+	}
+
 	/** Forget the settings added with {@link #addSettings} */
 	public static void clearSettings() {
 		settings.clear();

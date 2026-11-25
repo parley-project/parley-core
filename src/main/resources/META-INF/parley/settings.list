@@ -19,6 +19,7 @@ parley.*.plugins.path
 <server>.bindAddress
 <server>.backlog
 <server>.acceptTimeout
+<server>.configFile
 <server>.allowedClients
 <server>.maxConnections
 <server>.maxConnectionsPerClient

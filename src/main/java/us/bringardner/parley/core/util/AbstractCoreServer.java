@@ -115,7 +115,10 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	private volatile ServerSocketFactory factory;
 	
 	
+	//  Set with setPort: wins over the port setting. Otherwise the port is the <prefix>.port
+	//  setting, or defaultPort (what a constructor was given) when it isn't set.
 	private volatile int port=-1;
+	private volatile int defaultPort=DEFAULT_PORT;
 
 	//  Attributes may be accessed by many connection threads at the same time.
 	private volatile Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
@@ -164,9 +167,10 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		setSecure(secure);
 	}
 
+	/** @param port the port to listen on unless the server's {@code <prefix>.port} setting says another */
 	public AbstractCoreServer(int port) {
 		this();
-		setPort(port);
+		setDefaultPort(port);
 	}
 
 	public AbstractCoreServer() {
@@ -436,10 +440,16 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 * @return the port that the server should listen on for connection requests.
 	 */
 	public int getPort() {
-		if( port == -1 ) {
-			port = getIntProperty(propertyName(PROPERTY_PORT),DEFAULT_PORT);
-		}
-		return port;
+		int ret = port;
+		return ret >= 0 ? ret : getIntProperty(propertyName(PROPERTY_PORT),defaultPort);
+	}
+
+	/**
+	 * The port to listen on when neither {@link #setPort(int)} nor the {@code <prefix>.port} setting
+	 * says another. The settings are read when the server starts, so this is not looked at before.
+	 */
+	protected void setDefaultPort(int port) {
+		this.defaultPort = port;
 	}
 
 
@@ -451,6 +461,98 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	}
 
 
+
+	// ------------------------------------------------------------------ settings at start
+
+	/**
+	 * The name of this server's settings file in Parley's settings folder (CONF), e.g.
+	 * parley-smtp.properties; null (the default) for a server with no default file. The file is read
+	 * when the server starts, if it is there. A server runs without one: its settings default in code.
+	 */
+	protected String getSettingsFileName() {
+		return null;
+	}
+
+	/**
+	 * The setting that names a settings file, which has to be there when it is set. It is
+	 * read before the file is, so it comes from the system properties or an earlier file.
+	 */
+	protected String getSettingsFileProperty() {
+		return propertyName("configFile");
+	}
+
+	/**
+	 * Called when the server starts, after its settings file was looked for and before the settings
+	 * are checked. A server that took values from its settings when it was made takes them again when
+	 * a file was read (and not otherwise: what was set in code since it was made stays).
+	 *
+	 * @param fromFile true if a settings file was read
+	 * @throws IOException if a setting names something that can't be used
+	 */
+	protected void settingsRead(boolean fromFile) throws IOException {
+	}
+
+	/**
+	 * Add what is wrong with the settings as the server has them (after its file is read) to
+	 * problems, one message each, naming the setting. A server that has any problem doesn't start.
+	 * The default checks the port.
+	 */
+	protected void checkSettings(java.util.List<String> problems) {
+		int p = getPort();
+		if( p < 0 || p > 65535 ) {
+			problems.add(propertyName(PROPERTY_PORT)+" is "+p+": a port is 0 to 65535");
+		}
+	}
+
+	/**
+	 * What start does first: read the server's settings file (see {@link #getSettingsFileProperty()}
+	 * and {@link #getSettingsFileName()}; settings are added with {@link #addSettings}) and check the settings
+	 * ({@link #checkSettings}). Every problem is reported, in the log and on System.err.
+	 *
+	 * @return null if the server can start, else why it won't
+	 */
+	protected final Throwable prepareToStart() {
+		java.util.List<String> problems = new java.util.ArrayList<>();
+		String where = null;
+		try {
+			String named = getProperty(getSettingsFileProperty());
+			java.util.Properties found;
+			if( named != null && !named.trim().isEmpty() ) {
+				where = named.trim();
+				found = readSettingsFile(where);
+			} else if( getSettingsFileName() != null ) {
+				where = us.bringardner.parley.plugin.PluginFolders.confDir()+"/"+getSettingsFileName();
+				found = findSettingsFile(where);	// (not there is fine)
+			} else {
+				found = null;
+			}
+			if( found != null ) {
+				addSettings(found);
+				applyLogLevelSetting();
+				logInfo("Server "+getName()+" read its settings from "+where);
+			}
+			settingsRead(found != null);
+		} catch(IOException | RuntimeException e) {
+			problems.add("the settings file "+where+" can't be used: "+e.getMessage());
+		}
+		try {
+			checkSettings(problems);
+		} catch(RuntimeException e) {
+			problems.add("the settings can't be checked: "+e);
+		}
+		if( problems.isEmpty() ) {
+			return null;
+		}
+		StringBuilder buf = new StringBuilder("Server "+getName()+" will not start, "+problems.size()+(problems.size() == 1 ? " problem:" : " problems:"));
+		int n = 0;
+		for(String s : problems) {
+			buf.append("\n  ").append(++n).append(") ").append(s);
+		}
+		String msg = buf.toString();
+		logError(msg);
+		System.err.println(msg);
+		return new IllegalStateException(msg);
+	}
 
 	/**
 	 * Called by processors and/or connections to notify the server that a connection was closed
