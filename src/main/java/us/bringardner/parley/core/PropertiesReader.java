@@ -65,6 +65,11 @@ final class PropertiesReader {
 	 * @return the settings of the file and of the files it includes, without the include settings
 	 */
 	static Properties read(InputStream in, String fn, IncludeResolver resolver) throws IOException {
+		return readFile(in, fn, resolver).getProperties();
+	}
+
+	/** Like {@link #read}, and which file each setting is in */
+	static SettingsFile readFile(InputStream in, String fn, IncludeResolver resolver) throws IOException {
 		Loading p = new Loading(null, fn, resolver);
 		try {
 			p.load(in);
@@ -73,7 +78,7 @@ final class PropertiesReader {
 		}
 		Properties ret = new Properties();
 		ret.putAll(p);
-		return ret;
+		return new SettingsFile(fn, ret, p.origins);
 	}
 
 	/** The settings of one file while it is read: an include setting is read, and not kept */
@@ -83,12 +88,15 @@ final class PropertiesReader {
 		private final transient String fn;
 		private final transient IncludeResolver resolver;
 		private final transient int depth;
+		/** the file each setting came from, shared by the files that include each other */
+		private final transient java.util.Map<String, String> origins;
 
 		Loading(Loading parent, String fn, IncludeResolver resolver) {
 			this.parent = parent;
 			this.fn = fn;
 			this.resolver = resolver;
 			this.depth = parent == null ? 0 : parent.depth + 1;
+			this.origins = parent == null ? new java.util.HashMap<>() : parent.origins;
 		}
 
 		@Override
@@ -97,6 +105,7 @@ final class PropertiesReader {
 				include(String.valueOf(value).trim());
 				return null;
 			}
+			origins.put(String.valueOf(key), fn);
 			return super.put(key, value);
 		}
 

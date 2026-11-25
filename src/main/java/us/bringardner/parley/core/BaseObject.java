@@ -120,17 +120,17 @@ public class BaseObject {
 	 * The file may include others with {@code parley.include}. Nothing is added: see {@link #addSettings}.
 	 *
 	 * @param name the file's name as the resolvers know it (a path, a filesource: URL ...)
-	 * @return the settings, or null if no resolver knows the file
+	 * @return the settings and the file each is in, or null if no resolver knows the file
 	 * @throws IOException if the file or one it includes can't be read, or an include is wrong
 	 */
-	public static Properties findSettingsFile(String name) throws IOException {
+	public static SettingsFile findSettingsFile(String name) throws IOException {
 		IncludeResolver resolver = PropertiesReader.standard(BaseObject.class);
 		IncludeResolver.Found found = resolver.find(null, name);
 		if( found == null ) {
 			return null;
 		}
 		try(InputStream in = found.getStream()) {
-			return PropertiesReader.read(in, found.getName(), resolver);
+			return PropertiesReader.readFile(in, found.getName(), resolver);
 		} catch(IllegalStateException e) {
 			throw new IOException("Settings file "+name+" "+e.getMessage(), e);
 		}
@@ -141,8 +141,8 @@ public class BaseObject {
 	 *
 	 * @throws java.io.FileNotFoundException if no resolver knows the file
 	 */
-	public static Properties readSettingsFile(String name) throws IOException {
-		Properties ret = findSettingsFile(name);
+	public static SettingsFile readSettingsFile(String name) throws IOException {
+		SettingsFile ret = findSettingsFile(name);
 		if( ret == null ) {
 			throw new java.io.FileNotFoundException("Settings file "+name+" isn't there");
 		}

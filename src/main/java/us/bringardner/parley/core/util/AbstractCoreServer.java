@@ -485,10 +485,9 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 * Called with the settings of the file the server has just read, before they are used: a place to
 	 * tell the administrator about a name nothing reads (a misspelling). The default does nothing.
 	 *
-	 * @param where the file's name, as the resolvers found it
-	 * @param found the settings in it (and in the files it includes)
+	 * @param found the settings of the file and of the files it includes, and the file each is in
 	 */
-	protected void settingsFileRead(String where, java.util.Properties found) {
+	protected void settingsFileRead(us.bringardner.parley.core.SettingsFile found) {
 	}
 
 	/**
@@ -526,7 +525,7 @@ public abstract class AbstractCoreServer extends BaseThread  {
 		String where = null;
 		try {
 			String named = getProperty(getSettingsFileProperty());
-			java.util.Properties found;
+			us.bringardner.parley.core.SettingsFile found;
 			if( named != null && !named.trim().isEmpty() ) {
 				where = named.trim();
 				found = readSettingsFile(where);
@@ -537,8 +536,8 @@ public abstract class AbstractCoreServer extends BaseThread  {
 				found = null;
 			}
 			if( found != null ) {
-				settingsFileRead(where, found);
-				addSettings(found);
+				settingsFileRead(found);
+				addSettings(found.getProperties());
 				applyLogLevelSetting();
 				logInfo("Server "+getName()+" read its settings from "+where);
 			}
