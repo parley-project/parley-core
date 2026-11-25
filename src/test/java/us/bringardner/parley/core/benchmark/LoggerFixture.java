@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 import us.bringardner.parley.core.ILogger;
 import us.bringardner.parley.core.JulLogger;
 import us.bringardner.parley.core.Log4JLogger;
+import us.bringardner.parley.core.LogLevel;
 import us.bringardner.parley.core.ParleyLogger;
 import us.bringardner.parley.core.SystemLogger;
 
@@ -122,7 +123,7 @@ final class LoggerFixture implements AutoCloseable {
 				useJulFile(file, batched);
 			}
 
-			logger.setLevel(ILogger.Level.INFO);
+			logger.setLevel(LogLevel.INFO);
 
 			if( logger.isDebugEnabled() || !logger.isInfoEnabled() ) {
 				throw new IllegalStateException(type + " isn't at level INFO (it's " + logger.getLevel() + ")");
