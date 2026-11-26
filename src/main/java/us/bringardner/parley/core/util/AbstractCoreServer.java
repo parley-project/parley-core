@@ -532,9 +532,12 @@ public abstract class AbstractCoreServer extends BaseThread  {
 	 * and {@link #getSettingsFileName()}; settings are added with {@link #addSettings}) and check the settings
 	 * ({@link #checkSettings}). Every problem is reported, in the log and on System.err.
 	 *
+	 * A server that has more to prepare overrides this, calls {@code super.prepareToStart()} first and
+	 * returns its problem, if there is one, without going on.
+	 *
 	 * @return null if the server can start, else why it won't
 	 */
-	protected final Throwable prepareToStart() {
+	protected Throwable prepareToStart() {
 		java.util.List<String> problems = new java.util.ArrayList<>();
 		String where = null;
 		boolean shared = false;
