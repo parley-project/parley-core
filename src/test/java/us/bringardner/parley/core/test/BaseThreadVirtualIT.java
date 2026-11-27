@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.URL;
@@ -12,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import us.bringardner.parley.core.BaseThread;
@@ -22,6 +24,19 @@ import us.bringardner.parley.core.BaseThread;
  * thread; on older JDKs everything stays a platform thread.
  */
 public class BaseThreadVirtualIT {
+
+	/**
+	 * Outside Maven (an IDE run, say) BaseThread comes from the classes folder, where the Java 21
+	 * classes are not: skip then. Under Maven a run that isn't against the jar is a failure, see
+	 * {@link #testsTheJar()}.
+	 */
+	@BeforeAll
+	static void skipOutsideMavenWhenNotTheJar() {
+		boolean maven = System.getProperty("surefire.test.class.path") != null
+				|| System.getProperty("surefire.real.class.path") != null;
+		boolean jar = "jar".equals(BaseThread.class.getResource("BaseThread.class").getProtocol());
+		assumeTrue(jar || maven, "BaseThreadVirtualIT runs against the built jar (mvn verify); skipped here");
+	}
 
 	static class Worker extends BaseThread {
 		final AtomicReference<Thread> ranOn = new AtomicReference<>();
