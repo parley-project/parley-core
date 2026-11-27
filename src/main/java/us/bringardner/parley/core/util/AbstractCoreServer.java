@@ -572,9 +572,6 @@ public abstract class AbstractCoreServer extends BaseThread  {
 				addSettings(found.getProperties());
 				logInfo("Server "+getName()+" read its settings from "+where);
 			}
-			if( found != null || shared ) {
-				applyLogLevelSetting();
-			}
 			settingsRead(found != null || shared);
 		} catch(IOException | RuntimeException e) {
 			problems.add("the settings file "+where+" can't be used: "+e.getMessage());

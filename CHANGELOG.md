@@ -2,6 +2,19 @@
 
 ## parley-core 2.0.0 (unreleased)
 
+### Changed (2026-11-27: BaseObject logs through System.Logger only)
+
+- **`ILogger` is gone, and so are `SystemLogger` and `ParleyLogger`** (`ParleyLogger` is in parley-logging). `BaseObject`
+  writes to a `System.Logger` (`getLogger()` returns one; `setLogger(System.Logger)` replaces it) and has no log level of
+  its own: what is written is decided by the logging system behind System.Logger (java.util.logging unless the
+  application installs another, for example parley-logging, log4j-jpl or slf4j-jdk-platform-logging).
+- **Removed from `BaseObject`:** the `parley.logger` setting (`PROPERTY_LOGGER`, `getLoggerClass()`), the
+  `parley.log.level` settings (`PROPERTY_LOG_LEVEL`, `applyLogLevelSetting()`, `levelName(String)`) and
+  `getLogger(String)` returning an `ILogger`; `getLogger(String)` now returns a `System.Logger`. `AbstractCoreServer` no
+  longer applies log levels from its settings file. `LogLevel` stays (parley-logging and other modules use it) but
+  `BaseObject` doesn't.
+- The logger benchmarks (JMH) and their `benchmark` Maven profile moved out with `ParleyLogger`: parley-logging has its own.
+
 ### Added (2026-11-23: settings the servers of a protocol share)
 
 - **`isSupportPrefixProperty` and `setSupportPrefixProperty` are removed.** An empty prefix does the same: an object whose

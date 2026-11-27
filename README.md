@@ -230,32 +230,15 @@ Parley code logs through `BaseObject`: `logDebug`, `logInfo`, `logWarn` and `log
 `logDebug(() -> "...")`, only build the message when that level is enabled. A class that can't extend
 `BaseObject` uses a `util.LogHelper`.
 
-What an object lets through is decided by its level:
-
-1. The level set on the object with `setLogLevel(LogLevel)`. It is the object's alone: one server's
-   level doesn't change another's of the same class. `setLogLevel(null)` removes it; `getLogLevel()`
-   returns it (null when none is set).
-2. Otherwise the nearest `parley.log.level` setting for the object's logger name (below), looked up
-   with `getProperty`, so an object with a configuration of its own reads it there.
-3. Otherwise nothing is held back.
-
-What it lets through is written with the JDK's `System.Logger` of the object's logger name (the class
-name; `LogHelper`'s name), and that logger decides too: the application chooses what writes the
-messages. With nothing else installed that is `java.util.logging`, which shows `INFO` and above on
-`System.err`. An application can install another `System.LoggerFinder`: Parley's own,
-[parley-logging](https://github.com/parley-project/parley-logging) (`ParleyLogger`, with the
-`parley.log.file` settings), or log4j's `log4j-jpl`, SLF4J's `slf4j-jdk-platform-logging` and so on.
+BaseObject does not decide what is logged and has no log level of its own. A message goes to the JDK's
+`System.Logger` named for the object (its class name; `LogHelper`'s name), and the logging system behind
+it decides what is written, so a level is set in that system's own configuration. `isDebugEnabled()` and
+the other `is...Enabled()` methods ask that logger, and a `Supplier` message is only built when it
+would be written. With nothing else installed the logging system is `java.util.logging`, which shows
+`INFO` and above on `System.err`. An application chooses another by installing a `System.LoggerFinder`:
+Parley's own, [parley-logging](https://github.com/parley-project/parley-logging) (`ParleyLogger`, with
+the `parley.log.*` settings), or log4j's `log4j-jpl`, SLF4J's `slf4j-jdk-platform-logging` and so on.
 Library code never includes one: a provider takes over all `System.Logger` output in its JVM.
-
-| Property | Meaning |
-|---|---|
-| `parley.log.level` | The level for every object that has none of its own. |
-| `parley.log.level.<name>` | The level for one logger, or every logger under a name; the nearest one set wins. A logger's name here is its name without `us.bringardner.parley.` (or `us.bringardner.`): `parley.log.level.pop3=DEBUG` sets every POP3 logger, `parley.log.level.pop3.server.Pop3Server` one class; other names are used whole (`parley.log.level.com.example.Mailer`). `BaseObject.levelName(name)` gives that name. |
-
-An object reads the settings once, the first time it logs; `BaseObject.refreshLogLevels()` makes every
-object read them again. Level names from other frameworks also work: `OFF`, `FATAL`, `SEVERE`,
-`WARNING`, `TRACE`, `ALL`, `FINE`, `FINER` and `FINEST`. An invalid level is reported on
-`System.err` and ignored.
 
 `System.Logger` has no way to name the code that logged, so a logging system that shows the source
 (the class and method that logged) shows `BaseObject` for every Parley message. The logger name is

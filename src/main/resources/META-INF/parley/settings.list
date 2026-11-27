@@ -2,7 +2,6 @@
 # (format: parley-net's KnownSettings). Add a name here when code here starts reading it.
 
 parley.core.forceTlsVersion
-parley.logger
 parley.core.virtualThreads
 
 # A properties file reads another where this stands (PropertiesReader)
@@ -37,13 +36,3 @@ parley.*.plugins.path
 <server>.soLinger
 <server>.socketTimeout
 <server>.tcpNoDelay
-
-# Log levels (BaseObject): every logger's level, and one name's (a logger's name without
-# us.bringardner.parley., e.g. parley.log.level.pop3), and where ParleyLogger writes (a server reads
-# these from its own configuration, so they are also set in its settings files).
-parley.log.level
-parley.log.level.**
-parley.log.file
-parley.log.fileCount
-parley.log.fileMaxSize
-parley.log.flushInterval

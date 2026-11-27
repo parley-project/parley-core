@@ -26,7 +26,6 @@
 package us.bringardner.parley.core.util;
 
 import us.bringardner.parley.core.BaseObject;
-import us.bringardner.parley.core.ILogger;
 
 /**
  * The objective of the LogHelper is to provide an easy way 
@@ -77,7 +76,7 @@ public class LogHelper extends BaseObject {
 	}
 
 	@Override
-	protected ILogger getLogger(String name) {		
+	protected System.Logger getLogger(String name) {		
 		return super.getLogger(this.name);
 	}
 }
