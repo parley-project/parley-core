@@ -66,7 +66,6 @@ public class Mailer extends BaseObject {
 | | `BaseThread` | A `Runnable` that can be started, stopped and restarted. |
 | | `NamedThreadFactory` | A `ThreadFactory` for executors: named daemon (or virtual) threads. |
 | | `NamedExecutors` | Single, scheduled, cached and fixed executors, and threads, all named daemon threads. |
-| | `LogLevel` | The levels Parley logs at: `NONE`, `ERROR`, `WARN`, `INFO`, `DEBUG`. |
 | `us.bringardner.parley.core.util` | `AbstractCoreServer` | Base class for a TCP or SSL server. |
 | | `SocketClient` | Creates configured plain or SSL client sockets. |
 | | `SocketOptions` | The timeout, linger, keep-alive and no-delay settings shared by servers and clients. |

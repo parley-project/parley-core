@@ -11,8 +11,7 @@
 - **Removed from `BaseObject`:** the `parley.logger` setting (`PROPERTY_LOGGER`, `getLoggerClass()`), the
   `parley.log.level` settings (`PROPERTY_LOG_LEVEL`, `applyLogLevelSetting()`, `levelName(String)`) and
   `getLogger(String)` returning an `ILogger`; `getLogger(String)` now returns a `System.Logger`. `AbstractCoreServer` no
-  longer applies log levels from its settings file. `LogLevel` stays (parley-logging and other modules use it) but
-  `BaseObject` doesn't.
+  longer applies log levels from its settings file. **`LogLevel` is removed** (it was only the level type of `ILogger`).
 - The logger benchmarks (JMH) and their `benchmark` Maven profile moved out with `ParleyLogger`: parley-logging has its own.
 
 ### Added (2026-11-23: settings the servers of a protocol share)
